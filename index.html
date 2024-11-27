@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Fame Builder Dashboard</title>
+</head>
+<body class="lightning-theme">
+    <div class="sidebar">
+        <h2 class="title glitch" data-text="Fame Builder">Fame Builder</h2>
+        <button class="dashboard-btn glitch" data-text="Dashboard">Dashboard</button>
+        <button class="feature-btn glitch" data-text="Features">Features</button>
+        <button id="add-button" class="add-btn">+</button>
+    </div>
+    
+    <div class="content">
+        <div id="dashboard" class="view active">
+            <h3 id="welcome-message">Welcome, [App Name]</h3>
+            <div class="card-container">
+                <div class="card glitch" data-text="Followers">
+                    <h3>Followers</h3>
+                    <p>0</p>
+                </div>
+                <div class="card glitch" data-text="Cash">
+                    <h3>Cash</h3>
+                    <p>£0</p>
+                </div>
+                <div class="card glitch" data-text="Ratings">
+                    <h3>Ratings</h3>
+                    <p>0</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="features" class="view">
+            <h1>Features Page</h1>
+            <p>This is where you can describe your features.</p>
+        </div>
+
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <span id="close-modal" class="close">&times;</span>
+                <h2>Add New Item</h2>
+                <p>This is where you can add new items.</p>
+            </div>
+        </div>
+
+        <div id="tutorial-overlay" class="tutorial-overlay">
+            <div class="tutorial-content">
+                <h2>Welcome to Fame Builder!</h2>
+                <p id="tutorial-step"></p>
+                <button id="next-button">Next</button>
+                <button id="close-tutorial">Skip Tutorial</button>
+            </div>
+            <div id="highlight-box" class="highlight-box"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
