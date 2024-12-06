@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fame Builder Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Roboto', sans-serif; /* Change font for all text */
@@ -17,7 +17,6 @@
             background-color: transparent; /* Set background to transparent */
             color: white; /* Set text color to white */
             border: 2px solid white; /* Optional: Add a border for better visibility */
-            font-family: 'Roboto', sans-serif; /* Ensure buttons use Roboto font */
             transition: transform 0.2s, background-color 0.3s; /* Add transition for background color */
         }
         .btn:hover {
@@ -88,10 +87,10 @@
             <div class="mt-auto w-full text-left p-4">
                 <p id="companyNameDisplay" class="text-lg font-bold flex items-center">
                     <span id="companyNameText">Company Name</span>
-                    <span id="verificationBadge" class="ml-2 hidden text -blue-500"><i class="fas fa-check-circle"></i></span>
+                    <span id="verificationBadge" class="ml-2 hidden text-blue-500"><i class="fas fa-check-circle"></i></span>
                 </p>
             </div>
-            <div class="absolute bottom-2 right-2 text-gray-500 text-xs">
+            <div class="absolute bottom- 2 right-2 text-gray-500 text-xs">
                 V1.0
             </div>
         </div>
@@ -152,9 +151,9 @@
         const updateCompanyBtn = document.getElementById('updateCompanyBtn');
         const homePage = document.getElementById('homePage');
         const createCompanyPage = document.getElementById('createCompanyPage');
-        const updateCompanyPage = document.getElement ```html
         const updateCompanyPage = document.getElementById('updateCompanyPage');
         const createCompanySubmit = document.getElementById('createCompanySubmit');
+        const updateCompanySubmit = document.getElement 
         const updateCompanySubmit = document.getElementById('updateCompanySubmit');
         const homeBtn = document.getElementById('homeBtn');
         const updateHomeBtn = document.getElementById('updateHomeBtn');
@@ -244,7 +243,6 @@
                     firstCompanyCreated = true;
                     price = 100;
                     priceAmount.textContent = `Price: £${price}`;
- ```html
                 } else {
                     alert('Not enough cash to create a company.');
                 }
