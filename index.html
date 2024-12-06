@@ -1,62 +1,127 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
-    <title>Fame Builder Dashboard</title>
+    <title>Fame Builder Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .btn {
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.1);
+        }
+        .sidebar {
+            transition: transform 0.3s ease;
+        }
+        .sidebar-closed {
+            transform: translateX(-100%);
+        }
+        .sidebar-open {
+            transform: translateX(0);
+        }
+        .page {
+            transition: transform 0.3s ease;
+        }
+        .page-hidden {
+            transform: translateX(100%);
+        }
+        .page-visible {
+            transform: translateX(0);
+        }
+    </style>
 </head>
-<body class="lightning-theme">
-    <div class="sidebar">
-        <h2 class="title glitch" data-text="Fame Builder">Fame Builder</h2>
-        <button class="dashboard-btn glitch" data-text="Dashboard">Dashboard</button>
-        <button class="feature-btn glitch" data-text="Features">Features</button>
-        <button id="add-button" class="add-btn">+</button>
-    </div>
-    
-    <div class="content">
-        <div id="dashboard" class="view active">
-            <h3 id="welcome-message">Welcome, [App Name]</h3>
-            <div class="card-container">
-                <div class="card glitch" data-text="Followers">
-                    <h3>Followers</h3>
-                    <p>0</p>
-                </div>
-                <div class="card glitch" data-text="Cash">
-                    <h3>Cash</h3>
-                    <p>£0</p>
-                </div>
-                <div class="card glitch" data-text="Ratings">
-                    <h3>Ratings</h3>
-                    <p>0</p>
-                </div>
-            </div>
+<body class="bg-gray-900 text-gray-200">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar fixed md:relative w-64 bg-gray-800 text-white p-4 flex flex-col items-center h-full z-10 md:transform-none md:translate-x-0 sidebar-closed">
+            <h1 class="text-3xl font-bold mb-6">Fame Builder</h1>
+            <button id="createCompanyBtn" class="btn w-full bg-blue-600 text-white px-4 py-2 rounded mb-4 hover:bg-blue-700">Create Company</button>
+            <button class="btn w-full bg-green-600 text-white px-4 py-2 rounded mb-4 hover:bg-green-700">Create App</button>
+            <button class="btn w-full bg-yellow-600 text-white px-4 py-2 rounded mb-4 hover:bg-yellow-700">Hire Employee</button>
         </div>
 
-        <div id="features" class="view">
-            <h1>Features Page</h1>
-            <p>This is where you can describe your features.</p>
-        </div>
-
-        <div id="modal" class="modal">
-            <div class="modal-content">
-                <span id="close-modal" class="close">&times;</span>
-                <h2>Add New Item</h2>
-                <p>This is where you can add new items.</p>
+        <!-- Main Content -->
+        <div class="flex-1 p-4 relative">
+            <button id="sidebarToggle" class="md:hidden text-white text-2xl mb-4 absolute top-4 left-4">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            <div id="homePage" class="page page-visible">
+                <h2 class="text-3xl font-bold mb-6 text-center">Home</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-md text-center">
+                        <h2 class="text-xl font-bold mb-2">Followers</h2>
+                        <p id="followersCount" class="text-3xl">0</p>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-md text-center">
+                        <h2 class="text-xl font-bold mb-2">Cash</h2>
+                        <p id="cashCount" class="text-3xl">$0</p>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-md text-center">
+                        <h2 class="text-xl font-bold mb-2">Level</h2>
+                        <p id="levelCount" class="text-3xl">1</p>
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <div id="tutorial-overlay" class="tutorial-overlay">
-            <div class="tutorial-content">
-                <h2>Welcome to Fame Builder!</h2>
-                <p id="tutorial-step"></p>
-                <button id="next-button">Next</button>
-                <button id="close-tutorial">Skip Tutorial</button>
+            <div id="createCompanyPage" class="page page-hidden absolute top-0 left-0 w-full h-full bg-gray-900 p-4">
+                <h2 class="text-3xl font-bold mb-6 text-center">Create Company</h2>
+                <div class="flex flex-col items-center">
+                    <input type="text" id="companyName" placeholder="Enter Company Name" class="mb-4 p-2 rounded bg-gray-800 text-white w-full md:w-1/2">
+                    <textarea id="companyDescription" placeholder="Enter Company Description" class="mb-4 p-2 rounded bg-gray-800 text-white w-full md:w-1/2"></textarea>
+                    <p class="text-xl mb-4">Price: £0</p>
+                    <button id="createCompanySubmit" class="btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create</button>
+                </div>
             </div>
-            <div id="highlight-box" class="highlight-box"></div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const createCompanyBtn = document.getElementById('createCompanyBtn');
+        const homePage = document.getElementById('homePage');
+        const createCompanyPage = document.getElementById('createCompanyPage');
+        const createCompanySubmit = document.getElementById('createCompanySubmit');
+
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('sidebar-closed')) {
+                sidebar.classList.remove('sidebar-closed');
+                sidebar.classList.add('sidebar-open');
+                sidebarToggle.innerHTML = '<i class="fas fa-arrow-left"></i>';
+                sidebarToggle.style.transform = 'translateX(16rem)'; // Move the button with the sidebar
+            } else {
+                sidebar.classList.remove('sidebar-open');
+                sidebar.classList.add('sidebar-closed');
+                sidebarToggle.innerHTML = '<i class="fas fa-arrow-right"></i>';
+                sidebarToggle.style.transform = 'translateX(0)'; // Reset the button position
+            }
+        });
+
+        createCompanyBtn.addEventListener('click', () => {
+            homePage.classList.remove('page-visible');
+            homePage.classList.add('page-hidden');
+            createCompanyPage.classList.remove('page-hidden');
+            createCompanyPage.classList.add('page-visible');
+        });
+
+        createCompanySubmit.addEventListener('click', () => {
+            const companyName = document.getElementById('companyName').value;
+            const companyDescription = document.getElementById('companyDescription').value;
+            if (companyName && companyDescription) {
+                alert(`Company Created: ${companyName}\nDescription: ${companyDescription}`);
+                createCompanyPage.classList.remove('page-visible');
+                createCompanyPage.classList.add('page-hidden');
+                homePage.classList.remove('page-hidden');
+                homePage.classList.add('page-visible');
+            } else {
+                alert('Please enter both company name and description.');
+            }
+        });
+    </script>
 </body>
 </html>
