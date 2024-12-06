@@ -12,10 +12,14 @@
             font-family: 'Press Start 2P', cursive;
         }
         .btn {
-            transition: transform 0.2s;
+            background-color: transparent; /* Set background to transparent */
+            color: white; /* Set text color to white */
+            border: 2px solid white; /* Optional: Add a border for better visibility */
+            transition: transform 0.2s, background-color 0.3s; /* Add transition for background color */
         }
         .btn:hover {
             transform: scale(1.1);
+            background-color: rgba(255, 255, 255, 0.1); /* Add a slight background color on hover */
         }
         .sidebar {
             transition: transform 0.3s ease;
@@ -63,24 +67,24 @@
         <!-- Sidebar -->
         <div id="sidebar" class="sidebar fixed md:relative w-64 bg-gray-800 text-white p-4 flex flex-col items-center h-full z-10 md:transform-none md:translate-x-0 sidebar-closed">
             <h1 class="text-3xl font-bold mb-6">Fame Builder</h1>
-            <button id="createCompanyBtn" class="btn w-full bg-blue-600 text-white px-4 py-2 rounded mb-4 hover:bg-blue-700 flex items-center justify-center">
+            <button id="createCompanyBtn" class="btn w-full px-4 py-2 rounded mb-4 flex items-center justify-center">
                 <i class="fas fa-building mr-2"></i> Create Company
             </button>
-            <button id="updateCompanyBtn" class="btn w-full bg-orange-600 text-white px-4 py-2 rounded mb-4 hover:bg-orange-700 flex items-center justify-center">
+            <button id="updateCompanyBtn" class="btn w-full px-4 py-2 rounded mb-4 flex items-center justify-center">
                 <i class="fas fa-edit mr-2"></i> Update Company
             </button>
-            <button class="btn w-full bg-green-600 text-white px-4 py-2 rounded mb-4 hover:bg-green-700 flex items-center justify-center">
+            <button class="btn w-full px-4 py-2 rounded mb-4 flex items-center justify-center">
                 <i class="fas fa-mobile-alt mr-2"></i> Create App
             </button>
-            <button class="btn w-full bg-yellow-600 text-white px-4 py-2 rounded mb-4 hover:bg-yellow-700 flex items-center justify-center">
+            <button class="btn w-full px-4 py-2 rounded mb-4 flex items-center justify-center">
                 <i class="fas fa-user-plus mr-2"></i> Hire Employee
             </button>
-            <button id="verificationBtn" class="btn w-full bg-purple-600 text-white px-4 py-2 rounded mb-4 hover:bg-purple-700 flex items-center justify-center">
+            <button id="verificationBtn" class="btn w-full px-4 py-2 rounded mb-4 flex items-center justify-center">
                 <i class="fas fa-check mr-2"></i> Verification
             </button>
             <div class="mt-auto w-full text-left p-4">
                 <p id="companyNameDisplay" class="text-lg font-bold flex items-center">
-                    <span id="companyNameText">Company Name </span>
+                    <span id="companyNameText">Company Name</span>
                     <span id="verificationBadge" class="ml-2 hidden text-blue-500"><i class="fas fa-check-circle"></i></span>
                 </p>
             </div>
@@ -144,14 +148,14 @@
         const createCompanyBtn = document.getElementById('createCompanyBtn');
         const updateCompanyBtn = document.getElementById('updateCompanyBtn');
         const homePage = document.getElementById('homePage');
-        const createCompanyPage = document .getElementById('createCompanyPage');
+        const createCompanyPage = document.getElementById('createCompanyPage');
         const updateCompanyPage = document.getElementById('updateCompanyPage');
         const createCompanySubmit = document.getElementById('createCompanySubmit');
         const updateCompanySubmit = document.getElementById('updateCompanySubmit');
         const homeBtn = document.getElementById('homeBtn');
         const updateHomeBtn = document.getElementById('updateHomeBtn');
         const verificationBtn = document.getElementById('verificationBtn');
-        const verificationBadge = document.getElementById('verificationBadge');
+ const verificationBadge = document.getElementById('verificationBadge');
         const followersCount = document.getElementById('followersCount');
         const cashCount = document.getElementById('cashCount');
         const priceAmount = document.getElementById('priceAmount');
@@ -247,7 +251,7 @@
         updateCompanySubmit.addEventListener('click', () => {
             const updatedCompanyName = document.getElementById('updateCompanyName').value;
             const updatedCompanyDescription = document.getElementById('updateCompanyDescription').value;
-            if (updatedCompanyName && updatedCompanyDescription) {
+            if (updatedCompanyName && updatedCompanyDescription ) {
                 companyNameText.textContent = updatedCompanyName;
                 document.getElementById('companyDescription').value = updatedCompanyDescription;
                 alert(`Company Updated: ${updatedCompanyName}\nDescription: ${updatedCompanyDescription}`);
