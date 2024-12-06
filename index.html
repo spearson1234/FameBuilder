@@ -6,15 +6,18 @@
     <title>Fame Builder Game</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Roboto', sans-serif; /* Change font for all text */
+            background-color: #1a202c; /* Dark background for body */
+            color: #edf2f7; /* Light text color */
         }
         .btn {
             background-color: transparent; /* Set background to transparent */
             color: white; /* Set text color to white */
             border: 2px solid white; /* Optional: Add a border for better visibility */
+            font-family: 'Roboto', sans-serif; /* Ensure buttons use Roboto font */
             transition: transform 0.2s, background-color 0.3s; /* Add transition for background color */
         }
         .btn:hover {
@@ -62,7 +65,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
+<body>
     <div class="flex h-screen">
         <!-- Sidebar -->
         <div id="sidebar" class="sidebar fixed md:relative w-64 bg-gray-800 text-white p-4 flex flex-col items-center h-full z-10 md:transform-none md:translate-x-0 sidebar-closed">
@@ -85,7 +88,7 @@
             <div class="mt-auto w-full text-left p-4">
                 <p id="companyNameDisplay" class="text-lg font-bold flex items-center">
                     <span id="companyNameText">Company Name</span>
-                    <span id="verificationBadge" class="ml-2 hidden text-blue-500"><i class="fas fa-check-circle"></i></span>
+                    <span id="verificationBadge" class="ml-2 hidden text -blue-500"><i class="fas fa-check-circle"></i></span>
                 </p>
             </div>
             <div class="absolute bottom-2 right-2 text-gray-500 text-xs">
@@ -149,13 +152,14 @@
         const updateCompanyBtn = document.getElementById('updateCompanyBtn');
         const homePage = document.getElementById('homePage');
         const createCompanyPage = document.getElementById('createCompanyPage');
+        const updateCompanyPage = document.getElement ```html
         const updateCompanyPage = document.getElementById('updateCompanyPage');
         const createCompanySubmit = document.getElementById('createCompanySubmit');
         const updateCompanySubmit = document.getElementById('updateCompanySubmit');
         const homeBtn = document.getElementById('homeBtn');
         const updateHomeBtn = document.getElementById('updateHomeBtn');
         const verificationBtn = document.getElementById('verificationBtn');
- const verificationBadge = document.getElementById('verificationBadge');
+        const verificationBadge = document.getElementById('verificationBadge');
         const followersCount = document.getElementById('followersCount');
         const cashCount = document.getElementById('cashCount');
         const priceAmount = document.getElementById('priceAmount');
@@ -240,6 +244,7 @@
                     firstCompanyCreated = true;
                     price = 100;
                     priceAmount.textContent = `Price: £${price}`;
+ ```html
                 } else {
                     alert('Not enough cash to create a company.');
                 }
@@ -251,7 +256,7 @@
         updateCompanySubmit.addEventListener('click', () => {
             const updatedCompanyName = document.getElementById('updateCompanyName').value;
             const updatedCompanyDescription = document.getElementById('updateCompanyDescription').value;
-            if (updatedCompanyName && updatedCompanyDescription ) {
+            if (updatedCompanyName && updatedCompanyDescription) {
                 companyNameText.textContent = updatedCompanyName;
                 document.getElementById('companyDescription').value = updatedCompanyDescription;
                 alert(`Company Updated: ${updatedCompanyName}\nDescription: ${updatedCompanyDescription}`);
