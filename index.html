@@ -87,10 +87,10 @@
             <div class="mt-auto w-full text-left p-4">
                 <p id="companyNameDisplay" class="text-lg font-bold flex items-center">
                     <span id="companyNameText">Company Name</span>
-                    <span id="verificationBadge" class="ml-2 hidden text-blue-500"><i class="fas fa-check-circle"></i></span>
+                    <span id ="verificationBadge" class="ml-2 hidden text-blue-500"><i class="fas fa-check-circle"></i></span>
                 </p>
             </div>
-            <div class="absolute bottom- 2 right-2 text-gray-500 text-xs">
+            <div class="absolute bottom-2 right-2 text-gray-500 text-xs">
                 V1.0
             </div>
         </div>
@@ -150,10 +150,9 @@
         const createCompanyBtn = document.getElementById('createCompanyBtn');
         const updateCompanyBtn = document.getElementById('updateCompanyBtn');
         const homePage = document.getElementById('homePage');
-        const createCompanyPage = document.getElementById('createCompanyPage');
+        const createCompanyPage = document.getElementById('createCompany Page');
         const updateCompanyPage = document.getElementById('updateCompanyPage');
         const createCompanySubmit = document.getElementById('createCompanySubmit');
-        const updateCompanySubmit = document.getElement 
         const updateCompanySubmit = document.getElementById('updateCompanySubmit');
         const homeBtn = document.getElementById('homeBtn');
         const updateHomeBtn = document.getElementById('updateHomeBtn');
@@ -243,6 +242,7 @@
                     firstCompanyCreated = true;
                     price = 100;
                     priceAmount.textContent = `Price: £${price}`;
+                ```html
                 } else {
                     alert('Not enough cash to create a company.');
                 }
