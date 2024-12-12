@@ -37,7 +37,7 @@
             </div>
             <div class="flex items-center mb-4">
                 <i class="fas fa-clock text-2xl mr-2"></i>
-                <span id="timeCount" class="text-xl">0</span>
+                <span id="timeCount" class="text-xl">Update in 0s</span>
             </div>
             <button id="startCountdown" class="bg-green-500 text-white px-4 py-2 rounded-full shadow-lg">
                 Start Countdown
@@ -77,7 +77,6 @@
         firebase.database().ref('counter').on('value', (snapshot) => {
             counter = snapshot.val() || 0;
             counterElement.textContent = counter;
-            timeCount.textContent = counter;
         });
 
         // Update user count from Firebase
@@ -95,10 +94,12 @@
 
         startCountdown.addEventListener('click', () => {
             clearInterval(countdownInterval);
+            let countdown = 20;
+            timeCount.textContent = `Update in ${countdown}s`;
             countdownInterval = setInterval(() => {
-                if (counter > 0) {
-                    counter--;
-                    firebase.database().ref('counter').set(counter);
+                if (countdown > 0) {
+                    countdown--;
+                    timeCount.textContent = `Update in ${countdown}s`;
                 } else {
                     clearInterval(countdownInterval);
                 }
