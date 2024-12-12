@@ -1,105 +1,52 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel Countdown</title>
+    <title>Counter App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-        }
-
-        .main-counter {
-            font-size: 120px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .admin-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
-            color: white;
-            background-color: #007bff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .admin-button:hover {
-            background-color: #0056b3;
-        }
-
-        .popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
+        .modal {
             display: none;
-            flex-direction: column;
-            align-items: flex-start;
-            padding: 20px;
         }
-
-        .popup .close-btn {
-            align-self: flex-end;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-        }
-
-        .popup .content {
-            margin-top: 10px;
-            width: 100%;
-        }
-
-        .popup .info {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        .popup .info div {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .popup button {
-            padding: 10px 15px;
-            font-size: 16px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-        }
-
-        .popup button:hover {
-            background-color: #218838;
+        .modal.active {
+            display: block;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js"></script>
+</head>
+<body class="flex items-center justify-center h-screen bg-gray-100">
+    <div class="text-center">
+        <div id="counter" class="text-9xl font-bold">0</div>
+    </div>
+    <button id="adminButton" class="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg">
+        Admin Panel
+    </button>
+
+    <div id="adminModal" class="modal fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-1/3">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <i class="fas fa-users text-2xl mr-2"></i>
+                    <span id="userCount" class="text-xl">0</span>
+                </div>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="flex items-center mb-4">
+                <i class="fas fa-clock text-2xl mr-2"></i>
+                <span id="timeCount" class="text-xl">0</span>
+            </div>
+            <button id="startCountdown" class="bg-green-500 text-white px-4 py-2 rounded-full shadow-lg">
+                Start Countdown
+            </button>
+        </div>
+    </div>
+
     <script>
-        // Firebase configuration
+        // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCph4r--7O-g0dRQhqmn7wNPTOR4OYfguc",
   authDomain: "fir-46d9c.firebaseapp.com",
@@ -114,77 +61,65 @@
         const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        let timeCounter = 0; // Counter value
+        const counterElement = document.getElementById('counter');
+        const adminButton = document.getElementById('adminButton');
+        const adminModal = document.getElementById('adminModal');
+        const closeModal = document.getElementById('closeModal');
+        const startCountdown = document.getElementById('startCountdown');
+        const timeCount = document.getElementById('timeCount');
+        const userCount = document.getElementById('userCount');
 
-        // Listen for changes to the countdown value in the database
-        const countdownRef = firebase.database().ref('countdown');
-        countdownRef.on('value', (snapshot) => {
-            const countdownValue = snapshot.val();
-            if (countdownValue !== null) {
-                document.getElementById('mainCounter').innerText = countdownValue;
-                document.getElementById('timeCounter').innerText = countdownValue;
-            }
+        let counter = 0;
+        let countdownInterval;
+
+        // Update counter from Firebase
+        firebase.database().ref('counter').on('value', (snapshot) => {
+            counter = snapshot.val() || 0;
+            counterElement.textContent = counter;
+            timeCount.textContent = counter;
         });
 
-        // Listen for changes to the online user count
-        const onlineUsersRef = firebase.database().ref('onlineUsers');
-        onlineUsersRef.on('value', (snapshot) => {
-            const userCount = snapshot.val();
-            if (userCount !== null) {
-                document.getElementById('onlineUsers').innerText = userCount;
-            }
+        // Update user count from Firebase
+        firebase.database().ref('userCount').on('value', (snapshot) => {
+            userCount.textContent = snapshot.val() || 0;
         });
 
-        // Toggle the popup visibility
-        function togglePopup() {
-            const popup = document.getElementById('adminPopup');
-            popup.style.display = popup.style.display === 'flex' ? 'none' : 'flex';
-        }
+        adminButton.addEventListener('click', () => {
+            adminModal.classList.add('active');
+        });
 
-        // Start the countdown and update the database
-        function startCountdown() {
-            let countdownValue = 10; // Example countdown starts at 10
-            countdownRef.set(countdownValue); // Initialize countdown in the database
+        closeModal.addEventListener('click', () => {
+            adminModal.classList.remove('active');
+        });
 
-            const interval = setInterval(() => {
-                if (countdownValue <= 0) {
-                    clearInterval(interval);
+        startCountdown.addEventListener('click', () => {
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                if (counter > 0) {
+                    counter--;
+                    firebase.database().ref('counter').set(counter);
                 } else {
-                    countdownValue--;
-                    countdownRef.set(countdownValue); // Update countdown in the database
+                    clearInterval(countdownInterval);
                 }
             }, 1000);
-        }
+        });
 
-        // Simulate online user addition (for demonstration purposes)
-        function simulateUserUpdate() {
-            let onlineUsers = Math.floor(Math.random() * 100) + 1;
-            onlineUsersRef.set(onlineUsers); // Update online users in the database
-        }
+        counterElement.addEventListener('click', () => {
+            counter++;
+            firebase.database().ref('counter').set(counter);
+        });
 
-        // Simulate real-time updates
-        setInterval(simulateUserUpdate, 5000); // Update online users every 5 seconds
+        // Simulate user joining the website
+        firebase.database().ref('userCount').transaction((currentCount) => {
+            return (currentCount || 0) + 1;
+        });
+
+        // Simulate user leaving the website
+        window.addEventListener('beforeunload', () => {
+            firebase.database().ref('userCount').transaction((currentCount) => {
+                return (currentCount || 0) - 1;
+            });
+        });
     </script>
-</head>
-<body>
-    <div class="main-counter" id="mainCounter">0</div>
-    <button class="admin-button" onclick="togglePopup()">Admin Panel</button>
-
-    <div class="popup" id="adminPopup">
-        <button class="close-btn" onclick="togglePopup()">&times;</button>
-        <div class="content">
-            <div class="info">
-                <div>
-                    <span>👥</span>
-                    <span id="onlineUsers">0</span>
-                </div>
-                <div>
-                    <span>⏰</span>
-                    <span id="timeCounter">0</span>
-                </div>
-            </div>
-            <button onclick="startCountdown()">Start Countdown</button>
-        </div>
-    </div>
 </body>
 </html>
