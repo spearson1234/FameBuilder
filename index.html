@@ -5,8 +5,8 @@
     <title>Counter App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         .modal {
             display: none;
@@ -48,17 +48,18 @@
     <script>
         // Your web app's Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCph4r--7O-g0dRQhqmn7wNPTOR4OYfguc",
+           apiKey: "AIzaSyCph4r--7O-g0dRQhqmn7wNPTOR4OYfguc",
   authDomain: "fir-46d9c.firebaseapp.com",
   databaseURL: "https://fir-46d9c-default-rtdb.firebaseio.com",
   projectId: "fir-46d9c",
   storageBucket: "fir-46d9c.firebasestorage.app",
   messagingSenderId: "162679514419",
-  appId: "1:162679514419:web:cb5e5848d4d9cc4d424a46"
+  appId: "1:162679514419:web:cb5e5848d4d9cc4d424a46",
+  measurementId: "G-JLYQW11ZM4"
         };
 
         // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
         const counterElement = document.getElementById('counter');
