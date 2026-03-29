@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Next-Gen Solar System Explorer (Multiplayer)</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #050508; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: white; user-select: none; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #050508; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: white; user-select: none; touch-action: none; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
         
         #ui-overlay { position: absolute; top: 30px; left: 30px; pointer-events: none; z-index: 10; }
@@ -31,41 +31,56 @@
         
         #surface-ui { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; animation: fadeIn 1s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        #fps-hint { position: absolute; bottom: 30px; left: 30px; font-size: 13px; color: rgba(255,255,255,0.9); background: rgba(10, 15, 25, 0.5); padding: 12px 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); font-weight: 300; letter-spacing: 1px; }
+        #fps-hint { position: absolute; bottom: 30px; left: 30px; font-size: 13px; color: rgba(255,255,255,0.9); background: rgba(10, 15, 25, 0.5); padding: 12px 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); font-weight: 300; letter-spacing: 1px; pointer-events: auto; }
         
-        #pause-menu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 15, 25, 0.85); padding: 40px; border-radius: 12px; text-align: center; pointer-events: auto; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
+        #pause-menu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 15, 25, 0.85); padding: 40px; border-radius: 12px; text-align: center; pointer-events: auto; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(15px); box-shadow: 0 20px 50px rgba(0,0,0,0.9); z-index: 30; }
         #pause-menu h2 { margin-top: 0; font-weight: 300; letter-spacing: 2px; }
         
         #loading { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050505; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; transition: opacity 1s ease; }
         .spinner { width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: #90caf9; animation: spin 1s ease-in-out infinite; margin-bottom: 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         #loading-text { font-size: 16px; letter-spacing: 3px; color: #aaa; margin-bottom: 15px; }
-        
         #progress-container { width: 300px; height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
         #progress-bar { width: 0%; height: 100%; background: #90caf9; transition: width 0.2s; }
         
         /* Time & Weather UI Styles */
-        #time-controls { margin-top: 15px; display: flex; gap: 8px; pointer-events: auto; }
+        #time-controls { margin-top: 15px; display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; }
         .time-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; padding: 6px 12px; cursor: pointer; transition: 0.2s; font-weight: bold; font-family: inherit; }
         .time-btn:hover { background: rgba(255,255,255,0.3); }
         .time-btn.active { background: #1976d2; border-color: #64b5f6; }
 
-        #time-slider-container { position: absolute; top: 30px; right: 30px; background: rgba(10, 15, 25, 0.6); padding: 15px 25px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); pointer-events: auto; }
+        #time-slider-container { position: absolute; top: 30px; right: 30px; background: rgba(10, 15, 25, 0.6); padding: 15px 25px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); pointer-events: auto; z-index: 25; }
         #time-slider-container label { display: block; margin-bottom: 8px; font-size: 14px; letter-spacing: 1px; color: #cfd8dc; }
         #surface-time { width: 200px; cursor: pointer; }
         
-        /* Warp UI Styles */
-        #warp-info { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20, 10, 35, 0.85); padding: 40px; border-radius: 12px; text-align: center; border: 1px solid rgba(200, 100, 255, 0.3); backdrop-filter: blur(15px); box-shadow: 0 20px 50px rgba(0,0,0,0.9); z-index: 50; }
+        /* Warp & Black Hole UI */
+        #warp-info { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(20, 10, 35, 0.85); padding: 40px; border-radius: 12px; text-align: center; border: 1px solid rgba(200, 100, 255, 0.3); backdrop-filter: blur(15px); box-shadow: 0 20px 50px rgba(0,0,0,0.9); z-index: 50; pointer-events: auto; }
         #warp-info h2 { color: #d580ff; font-weight: 300; letter-spacing: 3px; margin-top: 0; }
-
-        /* Black Hole Death Screen */
-        #spaghettification-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #ff3333; z-index: 1000; flex-direction: column; justify-content: center; align-items: center; font-family: monospace; text-align: center; }
+        #spaghettification-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #ff3333; z-index: 1000; flex-direction: column; justify-content: center; align-items: center; font-family: monospace; text-align: center; pointer-events: auto; }
         #spaghettification-screen h1 { font-size: 50px; text-shadow: 0 0 20px #ff0000; margin-bottom: 20px; letter-spacing: 5px; }
+        #multiplayer-status { position: absolute; top: 20px; right: 30px; font-size: 13px; color: #4caf50; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 5px; border: 1px solid rgba(76, 175, 80, 0.3); z-index: 50; }
 
-        #multiplayer-status { position: absolute; top: 20px; right: 30px; font-size: 13px; color: #4caf50; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 5px; border: 1px solid rgba(76, 175, 80, 0.3); }
+        /* --- MOBILE TOUCH CONTROLS --- */
+        #mobile-ui-layer { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        #joystick-base { position: absolute; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: none; pointer-events: none; }
+        #joystick-stick { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; top: 35px; left: 35px; }
+        .mobile-btn { position: absolute; background: rgba(25, 118, 210, 0.4); border: 2px solid #90caf9; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; pointer-events: auto; backdrop-filter: blur(5px); cursor: pointer; }
+        #btn-jump-mobile { bottom: 40px; right: 40px; width: 75px; height: 75px; box-shadow: 0 0 20px rgba(25,118,210,0.6); transition: 0.1s; }
+        #btn-jump-mobile:active { background: rgba(25, 118, 210, 0.8); transform: scale(0.95); }
+        #btn-jump-mobile svg { width: 35px; height: 35px; fill: white; }
+        #btn-menu-mobile { top: 20px; left: 20px; width: 50px; height: 50px; padding: 10px; background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.3); }
+        #btn-menu-mobile svg { width: 25px; height: 25px; fill: white; }
+        
+        @media (max-width: 768px) {
+            #ui-overlay { top: 15px; left: 15px; }
+            h1 { font-size: 26px; }
+            .controls-hint { display: none; } /* Hide mouse hint on mobile */
+            #time-slider-container { top: auto; bottom: 120px; right: 20px; }
+            #fps-hint { display: none; }
+            #planet-info { width: 95%; padding: 20px; }
+        }
     </style>
 
-    <!-- Three.js and Extensions -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
@@ -87,9 +102,13 @@
     <div id="ui-overlay">
         <h1>SOLAR SYSTEM</h1>
         <p>Multiplayer Procedural Explorer</p>
-        <div class="controls-hint" id="hint-text">
+        <div class="controls-hint" id="desktop-hint">
             🖱️ Hover & Click Planet to Orbit <br>
             🖱️ Scroll OUT to view the Milky Way & Universe
+        </div>
+        <div class="controls-hint" id="mobile-hint" style="display:none;">
+            👆 Tap a Planet to Orbit <br>
+            👆 Pinch to Zoom | Drag to Rotate
         </div>
         <div id="time-controls">
             <button class="time-btn" onclick="window.setTimeScale(0)" id="btn-t0">⏸️</button>
@@ -116,15 +135,26 @@
             <label>Time of Day: <strong id="time-display" style="color:#fff;">12:00</strong></label>
             <input type="range" id="surface-time" min="0" max="24" step="0.1" value="12">
         </div>
-        <div id="fps-hint"><strong>W A S D</strong> Move &nbsp;|&nbsp; <strong>Mouse</strong> Look &nbsp;|&nbsp; <strong>U</strong> Menu</div>
+        <div id="fps-hint"><strong>W A S D</strong> Move &nbsp;|&nbsp; <strong>Mouse</strong> Look &nbsp;|&nbsp; <strong>SPACE</strong> Jump &nbsp;|&nbsp; <strong>U</strong> Menu</div>
         <div id="crosshair"></div>
         <div id="pause-menu">
-            <h2>SURFACE EXPLORATION PAUSED</h2><br>
+            <h2>EXPLORATION PAUSED</h2><br>
             <div class="btn-group">
                 <button class="action-btn primary" onclick="window.resumeSurface()">Resume</button>
                 <button class="action-btn" onclick="window.exitSurface()">Launch to Space</button>
             </div>
         </div>
+    </div>
+
+    <!-- Mobile Specific UI Overlay -->
+    <div id="mobile-ui-layer">
+        <div id="joystick-base"><div id="joystick-stick"></div></div>
+        <button class="mobile-btn" id="btn-menu-mobile" onclick="window.togglePauseMenu()">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <button class="mobile-btn" id="btn-jump-mobile">
+            <svg viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
+        </button>
     </div>
 
     <div id="warp-info">
@@ -147,7 +177,15 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Switched to Firestore to comply with environment constraints and ensure proper path permissions
         import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment Details
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (isTouchDevice) {
+            document.getElementById('desktop-hint').style.display = 'none';
+            document.getElementById('mobile-hint').style.display = 'inline-block';
+        }
 
         // --- 0. Core Audio & Time Setup ---
         let timeScale = 1.0;
@@ -172,15 +210,13 @@
             
             const spaceOsc = audioCtx.createOscillator(); spaceOsc.type = 'sine'; spaceOsc.frequency.value = 45;
             spaceGain = audioCtx.createGain(); spaceGain.gain.value = 0.5;
-            spaceOsc.connect(spaceGain).connect(audioCtx.destination);
-            spaceOsc.start();
+            spaceOsc.connect(spaceGain).connect(audioCtx.destination); spaceOsc.start();
 
             const bufferSize = audioCtx.sampleRate * 2;
             const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const output = noiseBuffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = noiseBuffer; noiseSource.loop = true;
+            const noiseSource = audioCtx.createBufferSource(); noiseSource.buffer = noiseBuffer; noiseSource.loop = true;
             
             const weatherFilter = audioCtx.createBiquadFilter(); weatherFilter.type = 'lowpass'; weatherFilter.frequency.value = 300;
             weatherGain = audioCtx.createGain(); weatherGain.gain.value = 0;
@@ -189,19 +225,14 @@
             const walkFilter = audioCtx.createBiquadFilter(); walkFilter.type = 'bandpass'; walkFilter.frequency.value = 1200;
             walkGain = audioCtx.createGain(); walkGain.gain.value = 0;
             noiseSource.connect(walkFilter).connect(walkGain).connect(audioCtx.destination);
-            
             noiseSource.start();
         }
 
         // --- 1. Procedural Noise (FBM) ---
-        const P = new Uint8Array(512);
-        for(let i=0;i<256;i++) P[i] = P[i+256] = Math.floor(Math.random()*256);
+        const P = new Uint8Array(512); for(let i=0;i<256;i++) P[i] = P[i+256] = Math.floor(Math.random()*256);
         function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
         function lerp(t, a, b) { return a + t * (b - a); }
-        function grad(hash, x, y, z) {
-            const h = hash & 15; const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z;
-            return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-        }
+        function grad(hash, x, y, z) { const h = hash & 15; const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z; return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v); }
         function noise(x, y, z) {
             const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
             x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
@@ -209,11 +240,7 @@
             const A = P[X]+Y, AA = P[A]+Z, AB = P[A+1]+Z, B = P[X+1]+Y, BA = P[B]+Z, BB = P[B+1]+Z;
             return lerp(w, lerp(v, lerp(u, grad(P[AA], x, y, z), grad(P[BA], x-1, y, z)), lerp(u, grad(P[AB], x, y-1, z), grad(P[BB], x-1, y-1, z))), lerp(v, lerp(u, grad(P[AA+1], x, y, z-1), grad(P[BA+1], x-1, y, z-1)), lerp(u, grad(P[AB+1], x, y-1, z-1), grad(P[BB+1], x-1, y-1, z-1))));
         }
-        function fbm(x, y, z, octaves = 6) {
-            let amp = 0.5, freq = 1.0, sum = 0;
-            for(let i=0; i<octaves; i++) { sum += amp * noise(x*freq, y*freq, z*freq); freq *= 2.0; amp *= 0.5; }
-            return sum;
-        }
+        function fbm(x, y, z, octaves = 6) { let amp = 0.5, freq = 1.0, sum = 0; for(let i=0; i<octaves; i++) { sum += amp * noise(x*freq, y*freq, z*freq); freq *= 2.0; amp *= 0.5; } return sum; }
 
         // --- 2. Texture Generator ---
         function generatePlanetTextures(type) {
@@ -222,63 +249,26 @@
             const bumpCanvas = document.createElement('canvas'); bumpCanvas.width = w; bumpCanvas.height = h;
             const roughCanvas = document.createElement('canvas'); roughCanvas.width = w; roughCanvas.height = h;
             const ctx = canvas.getContext('2d'), bCtx = bumpCanvas.getContext('2d'), rCtx = roughCanvas.getContext('2d');
-            
             const imgData = ctx.createImageData(w, h), bData = bCtx.createImageData(w, h), rData = rCtx.createImageData(w, h);
             const data = imgData.data, bd = bData.data, rd = rData.data;
 
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
-                    const idx = (y * w + x) * 4;
-                    const u = x / w, v = y / h;
+                    const idx = (y * w + x) * 4; const u = x / w, v = y / h;
                     const theta = u * Math.PI * 2, phi = v * Math.PI;
                     const nx = Math.sin(phi) * Math.cos(theta), ny = Math.cos(phi), nz = Math.sin(phi) * Math.sin(theta);
                     let r, g, b, bump = 128, rough = 200;
                     
-                    if (type === 'sun') {
-                        const n = fbm(nx*5, ny*5, nz*5, 4); const intensity = (n + 1) * 0.5;
-                        r = 255; g = 100 + intensity * 155; b = intensity * 50; bump = 128 + n*20; rough = 255;
-                    } else if (type === 'earth') {
-                        const n = fbm(nx*3, ny*3, nz*3, 6);
-                        if (n < 0.0) { r = 10; g = 30; b = Math.min(255, 60 + Math.abs(n)*50); bump = 128; rough = 40; }
-                        else { if (n > 0.4) { r=180; g=170; b=160; } else if (n > 0.1) { r=30; g=100; b=40; } else { r=150; g=130; b=80; } bump = 128 + n * 100; rough = 220; }
-                    } else if (type === 'moon' || type === 'mercury') {
-                        const n = fbm(nx*4, ny*4, nz*4, 6);
-                        let crater = Math.abs(fbm(nx*15, ny*15, nz*15, 3)); crater = crater < 0.2 ? (0.2 - crater)*5 : 0;
-                        const val = (n + 1)*0.5 - crater; const base = type==='moon'? 100 : 70;
-                        r = g = b = base * val + 30; bump = 128 + val * 60; rough = 240;
-                    } else if (type === 'mars') {
-                        const n = fbm(nx*3, ny*3, nz*3, 6); const val = (n + 1) * 0.5;
-                        r = 150 + val*50; g = 50 + val*30; b = 20 + val*20; bump = 128 + n * 50; rough = 230;
-                        if (Math.abs(ny) > 0.9) { r=g=b=240; rough=150; bump=150; } 
-                    } else if (type === 'venus') {
-                        const n = fbm(nx*2, ny*5, nz*2, 5); const val = (n + 1) * 0.5;
-                        r = 220 + val*35; g = 160 + val*40; b = 80 + val*30; bump = 128 + n*20; rough = 150;
-                    } else if (type === 'jupiter') {
-                        const n = fbm(nx*2, ny*15, nz*2, 5); const swirl = fbm(nx*8, ny*8, nz*8, 4) * 0.2;
-                        const val = (Math.sin(ny * 20 + n + swirl) + 1) * 0.5;
-                        r = 180 + val*50; g = 140 + val*40; b = 100 + val*30;
-                        const dx = nx - 0.5, dy = ny - (-0.3), dz = nz - 0.5; if(Math.sqrt(dx*dx + dy*dy*4 + dz*dz) < 0.2) { r=180; g=60; b=40; } 
-                        bump = 128; rough = 180;
-                    } else if (type === 'saturn') {
-                        const n = fbm(nx, ny*20, nz, 4); const val = (Math.sin(ny * 30 + n*0.5) + 1) * 0.5;
-                        r = 210 + val*30; g = 180 + val*30; b = 140 + val*20; bump = 128; rough = 180;
-                    } else if (type === 'uranus') {
-                        r = 160; g = 220; b = 230 + (fbm(nx,ny,nz,2)*20); bump = 128; rough = 180;
-                    } else if (type === 'neptune') {
-                        const n = fbm(nx*3, ny*3, nz*3, 4); r = 40 + n*20; g = 70 + n*30; b = 180 + n*40; bump = 128; rough = 180;
-                    } else if (type.startsWith('exo_')) {
-                        const seed = parseInt(type.split('_')[1]) || 1; const r1 = Math.abs((seed * 123) % 255), g1 = Math.abs((seed * 456) % 255), b1 = Math.abs((seed * 789) % 255);
-                        const r2 = 255 - r1, g2 = 255 - g1, b2 = 255 - b1; const isGas = seed % 2 === 0;
-                        if (isGas) {
-                            const n = fbm(nx*2, ny*15, nz*2, 4); const swirl = fbm(nx*8, ny*8, nz*8, 3) * 0.2;
-                            const val = (Math.sin(ny * 20 + n + swirl) + 1) * 0.5;
-                            r = lerp(val, r1, r2); g = lerp(val, g1, g2); b = lerp(val, b1, b2); bump = 128; rough = 180;
-                        } else {
-                            const n = fbm(nx*3, ny*3, nz*3, 6);
-                            if (n < 0) { r = r1*0.3; g = g1*0.3; b = b1*0.3; bump = 128; rough = 20; } 
-                            else { r = lerp(n, r1, r2); g = lerp(n, g1, g2); b = lerp(n, b1, b2); bump = 128 + n*100; rough = 220; }
-                        }
-                    }
+                    if (type === 'sun') { const n = fbm(nx*5, ny*5, nz*5, 4); const intensity = (n + 1) * 0.5; r = 255; g = 100 + intensity * 155; b = intensity * 50; bump = 128 + n*20; rough = 255; } 
+                    else if (type === 'earth') { const n = fbm(nx*3, ny*3, nz*3, 6); if (n < 0.0) { r = 10; g = 30; b = Math.min(255, 60 + Math.abs(n)*50); bump = 128; rough = 40; } else { if (n > 0.4) { r=180; g=170; b=160; } else if (n > 0.1) { r=30; g=100; b=40; } else { r=150; g=130; b=80; } bump = 128 + n * 100; rough = 220; } } 
+                    else if (type === 'moon' || type === 'mercury') { const n = fbm(nx*4, ny*4, nz*4, 6); let crater = Math.abs(fbm(nx*15, ny*15, nz*15, 3)); crater = crater < 0.2 ? (0.2 - crater)*5 : 0; const val = (n + 1)*0.5 - crater; const base = type==='moon'? 100 : 70; r = g = b = base * val + 30; bump = 128 + val * 60; rough = 240; } 
+                    else if (type === 'mars') { const n = fbm(nx*3, ny*3, nz*3, 6); const val = (n + 1) * 0.5; r = 150 + val*50; g = 50 + val*30; b = 20 + val*20; bump = 128 + n * 50; rough = 230; if (Math.abs(ny) > 0.9) { r=g=b=240; rough=150; bump=150; } } 
+                    else if (type === 'venus') { const n = fbm(nx*2, ny*5, nz*2, 5); const val = (n + 1) * 0.5; r = 220 + val*35; g = 160 + val*40; b = 80 + val*30; bump = 128 + n*20; rough = 150; } 
+                    else if (type === 'jupiter') { const n = fbm(nx*2, ny*15, nz*2, 5); const swirl = fbm(nx*8, ny*8, nz*8, 4) * 0.2; const val = (Math.sin(ny * 20 + n + swirl) + 1) * 0.5; r = 180 + val*50; g = 140 + val*40; b = 100 + val*30; const dx = nx - 0.5, dy = ny - (-0.3), dz = nz - 0.5; if(Math.sqrt(dx*dx + dy*dy*4 + dz*dz) < 0.2) { r=180; g=60; b=40; } bump = 128; rough = 180; } 
+                    else if (type === 'saturn') { const n = fbm(nx, ny*20, nz, 4); const val = (Math.sin(ny * 30 + n*0.5) + 1) * 0.5; r = 210 + val*30; g = 180 + val*30; b = 140 + val*20; bump = 128; rough = 180; } 
+                    else if (type === 'uranus') { r = 160; g = 220; b = 230 + (fbm(nx,ny,nz,2)*20); bump = 128; rough = 180; } 
+                    else if (type === 'neptune') { const n = fbm(nx*3, ny*3, nz*3, 4); r = 40 + n*20; g = 70 + n*30; b = 180 + n*40; bump = 128; rough = 180; } 
+                    else if (type.startsWith('exo_')) { const seed = parseInt(type.split('_')[1]) || 1; const r1 = Math.abs((seed * 123) % 255), g1 = Math.abs((seed * 456) % 255), b1 = Math.abs((seed * 789) % 255); const r2 = 255 - r1, g2 = 255 - g1, b2 = 255 - b1; const isGas = seed % 2 === 0; if (isGas) { const n = fbm(nx*2, ny*15, nz*2, 4); const swirl = fbm(nx*8, ny*8, nz*8, 3) * 0.2; const val = (Math.sin(ny * 20 + n + swirl) + 1) * 0.5; r = lerp(val, r1, r2); g = lerp(val, g1, g2); b = lerp(val, b1, b2); bump = 128; rough = 180; } else { const n = fbm(nx*3, ny*3, nz*3, 6); if (n < 0) { r = r1*0.3; g = g1*0.3; b = b1*0.3; bump = 128; rough = 20; } else { r = lerp(n, r1, r2); g = lerp(n, g1, g2); b = lerp(n, b1, b2); bump = 128 + n*100; rough = 220; } } }
 
                     data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=255;
                     bd[idx]=bd[idx+1]=bd[idx+2]=Math.min(255,Math.max(0,bump)); bd[idx+3]=255;
@@ -335,7 +325,6 @@
             const group = new THREE.Group();
             const wMat = new THREE.MeshStandardMaterial({color: 0xffffff, metalness: 0.3, roughness: 0.4});
             const bMat = new THREE.MeshStandardMaterial({color: 0x222222, metalness: 0.3});
-            const redMat = new THREE.MeshStandardMaterial({color: 0xcc2222});
             
             const core = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 35, 32), wMat); core.position.y = 17.5;
             const stripe1 = new THREE.Mesh(new THREE.CylinderGeometry(3.55, 3.55, 4, 32), bMat); stripe1.position.y = 15;
@@ -373,9 +362,18 @@
         raycaster.params.Points.threshold = 2000;
         let viewState = 'global', focusedPlanet = null, transitionProgress = 0;
         let startCamPos = new THREE.Vector3(), startTarget = new THREE.Vector3(), endCamPos = new THREE.Vector3();
+        
+        // Movement Physics
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isJumping = false, isGrounded = true, playerVelocityY = 0;
         const velocity = new THREE.Vector3(), direction = new THREE.Vector3();
         let prevTime = performance.now(), playerHeight = 15, gravityMult = 1.0;
+
+        // Mobile Controls Variables
+        let touchMoveID = null, touchLookID = null;
+        let joystickCenter = {x:0, y:0};
+        const joystickVector = new THREE.Vector2();
+        let lastLook = {x:0, y:0};
 
         const celestialData = [
             { name: "Mercury", type: "mercury", size: 0.8, distance: 20, orbitSpeed: 0.04, rotationSpeed: 0.01 },
@@ -395,17 +393,48 @@
 
         async function initMultiplayer() {
             try {
+                let fConfig;
+                // Prefer the environment-provided configuration if it exists to satisfy strict rule constraints
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    fConfig = JSON.parse(__firebase_config);
+                } else {
+                    fConfig = {
+                        apiKey: "AIzaSyDlcI_JtmeNMcJxvjvUER5W1ROCH0uOfn4",
+                        authDomain: "test-83d1d.firebaseapp.com",
+                        databaseURL: "https://test-83d1d-default-rtdb.firebaseio.com",
+                        projectId: "test-83d1d",
+                        storageBucket: "test-83d1d.firebasestorage.app",
+                        messagingSenderId: "1060438880379",
+                        appId: "1:1060438880379:web:a22b03441ea97c16b3b2de"
+                    };
+                }
+                
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'solar-system-multiplayer';
-                const fConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                if(!fConfig) { document.getElementById('multiplayer-status').innerText = 'Offline Mode'; return; }
 
                 const app = initializeApp(fConfig);
-                auth = getAuth(app); db = getFirestore(app);
+                auth = getAuth(app); 
+                db = getFirestore(app);
 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        try {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } catch (tokenErr) {
+                            console.warn("Custom token mismatch (expected since you use a custom Firebase project). Falling back to Anonymous Auth.");
+                            await signInAnonymously(auth);
+                        }
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch(authErr) {
+                    if (authErr.code === 'auth/admin-restricted-operation' || authErr.code === 'auth/operation-not-allowed') {
+                        console.warn("Multiplayer disabled: Anonymous Sign-in is not enabled in your Firebase Console. Go to Firebase -> Authentication -> Sign-in method -> Enable Anonymous.");
+                        document.getElementById('multiplayer-status').innerHTML = '<span style="color:#ff5252">Offline: Enable Anon Auth in Firebase</span>';
+                    } else {
+                        console.error("Firebase Authentication failed.", authErr);
+                        document.getElementById('multiplayer-status').innerText = 'Offline: Auth Failed';
+                    }
+                    return;
                 }
 
                 onAuthStateChanged(auth, user => {
@@ -444,12 +473,11 @@
                     rp.targetPos.set(data.x, data.y, data.z);
                     rp.targetRot.set(data.rx, data.ry, data.rz);
                     
-                    // Flame control for remote rockets
                     const flame = rp.mesh.getObjectByName('flame');
-                    if(flame && data.scene === 'space') flame.visible = true; // Always thrusting in space for effect
+                    if(flame && data.scene === 'space') flame.visible = true;
                 });
 
-                // Cleanup stale
+                // Cleanup stale players
                 for(let uid in remotePlayers) {
                     let found = false;
                     snap.forEach(d => { if(d.id === uid && (now - d.data().lastActive < 20000)) found = true; });
@@ -459,19 +487,18 @@
                         delete remotePlayers[uid];
                     }
                 }
-            }, err => console.error(err));
+            }, err => console.error("Firestore error: ", err));
         }
 
         function syncMyPosition() {
             if(!currentUser || !db) return;
             const now = Date.now();
-            if(now - lastSync < 100) return; // 10fps
+            if(now - lastSync < 100) return; // Cap at 10 fps
             lastSync = now;
 
             const sceneId = activeSceneMode === 'space' ? 'space' : `surface_${focusedPlanet ? focusedPlanet.data.type : 'unknown'}`;
             const pos = activeSceneMode === 'space' ? camera.position : surfaceControls.getObject().position;
-            // Send rotation so astronauts look in correct directions
-            const rotY = activeSceneMode === 'space' ? camera.rotation.y : camera.rotation.y;
+            const rotY = activeSceneMode === 'space' ? camera.rotation.y : surfaceControls.getObject().rotation.y;
 
             setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid), {
                 x: pos.x, y: pos.y, z: pos.z,
@@ -504,11 +531,21 @@
             camera.position.set(0, 150, 250); spaceControls.update();
 
             window.addEventListener('resize', onWindowResize);
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('click', onMouseClick);
+            
+            if(!isTouchDevice) {
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('click', onMouseClick);
+            }
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
             
+            // Setup Touch Listeners
+            setupTouchControls();
+
+            // Prevent UI touches from triggering look
+            document.getElementById('time-slider-container').addEventListener('touchstart', e => e.stopPropagation());
+            document.getElementById('time-slider-container').addEventListener('touchmove', e => e.stopPropagation());
+
             surfaceControls.addEventListener('lock', () => { document.getElementById('pause-menu').style.display = 'none'; document.getElementById('crosshair').style.display = 'block'; });
             surfaceControls.addEventListener('unlock', () => { if(activeSceneMode === 'surface') { document.getElementById('pause-menu').style.display = 'block'; document.getElementById('crosshair').style.display = 'none'; } });
 
@@ -519,6 +556,92 @@
 
             animate();
         }
+
+        // --- Touch Control Setup ---
+        function setupTouchControls() {
+            if (!isTouchDevice) return;
+
+            // Space Mode Raycaster for Touch
+            window.addEventListener('touchstart', e => {
+                if (activeSceneMode === 'space' && viewState === 'global') {
+                    if (e.target.closest('.action-btn') || e.target.closest('.time-btn')) return;
+                    mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera); 
+                    const hits = raycaster.intersectObjects(interactableMeshes);
+                    if (hits.length > 0) {
+                        const hit = hits[0].object;
+                        if (hit.userData.isGalaxy) { warpTarget.copy(hits[0].point); document.getElementById('warp-info').style.display = 'block'; return; }
+                        if (hit.userData.isSun) { landOn(sunMesh, { name: "The Sun", type: 'sun', size: 8, desc: hit.userData.desc }); document.getElementById('btn-land').style.display = 'none'; }
+                        else if (hit.userData.planetData) { landOn(hit, hit.userData.planetData); document.getElementById('btn-land').style.display = 'inline-block'; }
+                    }
+                }
+            }, {passive: false});
+
+            // Surface FPS Touch Controller
+            const uiLayer = document.getElementById('mobile-ui-layer');
+            uiLayer.addEventListener('touchstart', e => {
+                if(activeSceneMode !== 'surface' || isLaunching) return;
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if(t.target.closest('.mobile-btn')) continue; // Ignore buttons
+
+                    if(t.clientX < window.innerWidth / 2 && touchMoveID === null) {
+                        touchMoveID = t.identifier;
+                        joystickCenter = {x: t.clientX, y: t.clientY};
+                        const jb = document.getElementById('joystick-base');
+                        jb.style.display = 'block'; jb.style.left = (t.clientX - 60) + 'px'; jb.style.top = (t.clientY - 60) + 'px';
+                        document.getElementById('joystick-stick').style.transform = `translate(0px, 0px)`;
+                    } else if (t.clientX >= window.innerWidth / 2 && touchLookID === null) {
+                        touchLookID = t.identifier;
+                        lastLook = {x: t.clientX, y: t.clientY};
+                    }
+                }
+            }, {passive: false});
+
+            uiLayer.addEventListener('touchmove', e => {
+                if(activeSceneMode !== 'surface' || isLaunching) return;
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if(t.identifier === touchMoveID) {
+                        e.preventDefault();
+                        let dx = t.clientX - joystickCenter.x, dy = t.clientY - joystickCenter.y;
+                        const maxD = 40, dist = Math.sqrt(dx*dx + dy*dy);
+                        if(dist > maxD) { dx = (dx/dist)*maxD; dy = (dy/dist)*maxD; }
+                        joystickVector.set(dx/maxD, dy/maxD);
+                        document.getElementById('joystick-stick').style.transform = `translate(${dx}px, ${dy}px)`;
+                    } else if(t.identifier === touchLookID) {
+                        e.preventDefault();
+                        const dx = t.clientX - lastLook.x, dy = t.clientY - lastLook.y;
+                        lastLook = {x: t.clientX, y: t.clientY};
+                        
+                        const yawObj = surfaceControls.getObject();
+                        yawObj.rotation.y -= dx * 0.005;
+                        camera.rotation.x -= dy * 0.005;
+                        camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                    }
+                }
+            }, {passive: false});
+
+            const handleEnd = e => {
+                if(activeSceneMode !== 'surface') return;
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    if(e.changedTouches[i].identifier === touchMoveID) {
+                        touchMoveID = null; joystickVector.set(0,0);
+                        document.getElementById('joystick-base').style.display = 'none';
+                    } else if(e.changedTouches[i].identifier === touchLookID) {
+                        touchLookID = null;
+                    }
+                }
+            };
+            uiLayer.addEventListener('touchend', handleEnd); uiLayer.addEventListener('touchcancel', handleEnd);
+
+            // Jump Button
+            const jumpBtn = document.getElementById('btn-jump-mobile');
+            jumpBtn.addEventListener('touchstart', e => { e.preventDefault(); if(!isLaunching && activeSceneMode === 'surface') isJumping = true; });
+            jumpBtn.addEventListener('touchend', e => { e.preventDefault(); isJumping = false; });
+        }
+
 
         async function buildGalaxy() {
             galaxyGroup = new THREE.Group(); spaceScene.add(galaxyGroup);
@@ -732,7 +855,7 @@
                         else if (h < 220 && cMed < 1000) { instMed.setMatrixAt(cMed, dummy.matrix); instMed.setColorAt(cMed, color); cMed++; } 
                         else if (cTall < 1000) { instTall.setMatrixAt(cTall, dummy.matrix); instTall.setColorAt(cTall, color); cTall++; }
                     } else if (Math.random() > 0.95 && ambientRockets.length < 5) {
-                        // Create ambient rocket pads & rockets
+                        // Ambient rockets AI
                         const pad = new THREE.Mesh(new THREE.CylinderGeometry(40, 40, 2, 32), new THREE.MeshStandardMaterial({color: 0x555555}));
                         pad.position.set(x, 1, z); cityGroup.add(pad);
                         const r = createNASARocket(); r.position.set(x, 2, z); cityGroup.add(r);
@@ -749,7 +872,7 @@
             focusedPlanet = { mesh, data }; viewState = 'transitioning_in'; transitionProgress = 0;
             startCamPos.copy(camera.position); startTarget.copy(spaceControls.target);
             document.getElementById('planet-info').style.display = 'block'; document.getElementById('planet-name').innerText = data.name; document.getElementById('planet-desc').innerText = data.desc;
-            document.getElementById('hint-text').innerHTML = "🖱️ Left Drag to orbit planet<br>🖱️ Scroll to zoom"; document.body.style.cursor = 'default';
+            document.body.style.cursor = 'default';
             spaceControls.minDistance = data.size * 1.5; spaceControls.maxDistance = data.size * 15;
         }
 
@@ -797,7 +920,7 @@
             }
 
             const sunDist = Math.max(10, focusedPlanet.data.distance); surfaceLight.position.set(3000, 2000, -4000); 
-            const sunSky = new THREE.Mesh(new THREE.SphereGeometry(6000/sunDist, 32, 32), new THREE.MeshBasicMaterial({color: 0xffffee, fog: false}));
+            const sunSky = new THREE.Mesh(new THREE.SphereGeometry(6000/sunDist, 32, 32), new MeshBasicMaterial({color: 0xffffee, fog: false}));
             sunSky.name = 'sunSky'; sunSky.position.copy(surfaceLight.position).multiplyScalar(2); surfaceSkyGroup.add(sunSky);
 
             if (isBlackHoleActive) {
@@ -816,11 +939,14 @@
             }
 
             activeSceneMode = 'surface'; spaceControls.enabled = false;
-            camera.position.set(0, 500, 0); camera.rotation.set(0, 0, 0); document.getElementById('surface-time').value = 12;
+            camera.position.set(0, 50, 0); camera.rotation.set(0, 0, 0); document.getElementById('surface-time').value = 12;
             document.getElementById('ui-overlay').style.display = 'none'; document.getElementById('planet-info').style.display = 'none';
-            document.getElementById('surface-ui').style.display = 'block'; surfaceControls.lock();
+            document.getElementById('surface-ui').style.display = 'block'; 
             
-            // Render remote players correctly on planet entry
+            if (isTouchDevice) document.getElementById('mobile-ui-layer').style.display = 'block';
+            else surfaceControls.lock();
+            
+            // Multiplayer Sync view
             for(let uid in remotePlayers) {
                 const rp = remotePlayers[uid];
                 const sceneId = `surface_${focusedPlanet.data.type}`;
@@ -834,6 +960,7 @@
             myRocket.position.set(camPos.x, camPos.y - 15, camPos.z - 50); myRocket.rotation.set(0, 0, 0);
             surfaceScene.add(myRocket);
             document.getElementById('surface-ui').style.display = 'none'; document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('mobile-ui-layer').style.display = 'none';
             if (audioCtx) { spaceGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 1); weatherGain.gain.setTargetAtTime(0, audioCtx.currentTime, 1); walkGain.gain.setTargetAtTime(1.0, audioCtx.currentTime, 0.1); }
         };
 
@@ -851,9 +978,36 @@
             }
         }
 
-        window.resumeSurface = function() { surfaceControls.lock(); };
-        const onKeyDown = function (e) { if (activeSceneMode !== 'surface') return; if (e.code === 'KeyU') { if (surfaceControls.isLocked) surfaceControls.unlock(); else window.resumeSurface(); return; } switch (e.code) { case 'KeyW': moveForward = true; break; case 'KeyA': moveLeft = true; break; case 'KeyS': moveBackward = true; break; case 'KeyD': moveRight = true; break; } };
-        const onKeyUp = function (e) { if (activeSceneMode !== 'surface') return; switch (e.code) { case 'KeyW': moveForward = false; break; case 'KeyA': moveLeft = false; break; case 'KeyS': moveBackward = false; break; case 'KeyD': moveRight = false; break; } };
+        window.togglePauseMenu = function() {
+            const menu = document.getElementById('pause-menu');
+            if (menu.style.display === 'block') window.resumeSurface();
+            else {
+                if (!isTouchDevice) surfaceControls.unlock();
+                else { menu.style.display = 'block'; document.getElementById('mobile-ui-layer').style.display = 'none'; }
+            }
+        };
+
+        window.resumeSurface = function() { 
+            document.getElementById('pause-menu').style.display = 'none';
+            if (isTouchDevice) document.getElementById('mobile-ui-layer').style.display = 'block';
+            else surfaceControls.lock(); 
+        };
+
+        const onKeyDown = function (e) { 
+            if (activeSceneMode !== 'surface') return; 
+            if (e.code === 'KeyU') { window.togglePauseMenu(); return; } 
+            switch (e.code) { 
+                case 'KeyW': moveForward = true; break; case 'KeyA': moveLeft = true; break; case 'KeyS': moveBackward = true; break; case 'KeyD': moveRight = true; break; 
+                case 'Space': if(!isLaunching) isJumping = true; break;
+            } 
+        };
+        const onKeyUp = function (e) { 
+            if (activeSceneMode !== 'surface') return; 
+            switch (e.code) { 
+                case 'KeyW': moveForward = false; break; case 'KeyA': moveLeft = false; break; case 'KeyS': moveBackward = false; break; case 'KeyD': moveRight = false; break; 
+                case 'Space': isJumping = false; break;
+            } 
+        };
         function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
         function updateDayNightCycle() {
@@ -876,19 +1030,16 @@
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now(), delta = (time - prevTime) / 1000;
-            syncMyPosition(); // Multiplayer sync
+            syncMyPosition(); 
 
-            // Smoothly move remote players
             for(let uid in remotePlayers) {
                 const rp = remotePlayers[uid];
                 rp.mesh.position.lerp(rp.targetPos, 0.1);
-                // simple y rot lerp
                 const diff = rp.targetRot.y - rp.mesh.rotation.y;
                 rp.mesh.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * 0.1;
                 
-                // Ensure visibility matches my scene
                 const myScene = activeSceneMode === 'space' ? 'space' : `surface_${focusedPlanet ? focusedPlanet.data.type : 'unknown'}`;
-                if(rp.scene !== myScene) rp.mesh.visible = false; else rp.mesh.visible = true;
+                rp.mesh.visible = (rp.scene === myScene);
             }
 
             if (activeSceneMode === 'space') {
@@ -932,18 +1083,15 @@
                 
                 // Ambient AI Rockets
                 ambientRockets.forEach(ar => {
-                    const flame = ar.mesh.getObjectByName('flame');
-                    const light = ar.mesh.getObjectByName('rLight');
+                    const flame = ar.mesh.getObjectByName('flame'); const light = ar.mesh.getObjectByName('rLight');
                     if(ar.state === 'idle') {
                         ar.timer -= delta; flame.visible = false; light.intensity = 0;
                         if(ar.timer <= 0) ar.state = 'launching';
                     } else if (ar.state === 'launching') {
-                        flame.visible = true; light.intensity = 5;
-                        ar.mesh.position.y += 300 * delta;
+                        flame.visible = true; light.intensity = 5; ar.mesh.position.y += 300 * delta;
                         if(ar.mesh.position.y > 6000) { ar.state = 'landing'; ar.mesh.position.set((Math.random()-0.5)*4000, 6000, (Math.random()-0.5)*4000); }
                     } else if (ar.state === 'landing') {
-                        flame.visible = true; light.intensity = 5;
-                        ar.mesh.position.y -= 150 * delta;
+                        flame.visible = true; light.intensity = 5; ar.mesh.position.y -= 150 * delta;
                         if(ar.mesh.position.y <= 20) { ar.mesh.position.y = 20; ar.state = 'idle'; ar.timer = 15 + Math.random()*25; }
                     }
                     if(flame.visible) flame.scale.set(1+Math.random()*0.4, 1+Math.random()*1.5, 1+Math.random()*0.4);
@@ -954,7 +1102,7 @@
                     const shake = (blackHoleScale - 1) * 4; camera.position.x += (Math.random() - 0.5) * shake; camera.position.y += (Math.random() - 0.5) * shake; camera.position.z += (Math.random() - 0.5) * shake;
                     surfaceLight.intensity = Math.max(0, surfaceLight.intensity - 0.5 * delta); surfaceScene.background.lerp(new THREE.Color(0x220000), 1.0 * delta);
                     if (cityGroup && blackHoleScale > 1.2) cityGroup.position.y += (blackHoleScale - 1.2) * 150 * delta;
-                    if (blackHoleScale > 4.5) { document.getElementById('spaghettification-screen').style.display = 'flex'; surfaceControls.unlock(); activeSceneMode = 'dead'; }
+                    if (blackHoleScale > 4.5) { document.getElementById('spaghettification-screen').style.display = 'flex'; if(!isTouchDevice) surfaceControls.unlock(); activeSceneMode = 'dead'; }
                 }
 
                 if (isLaunching) {
@@ -965,29 +1113,65 @@
                     const light = myRocket.getObjectByName('rLight'); if(light) light.intensity = 5 + Math.random() * 10;
                     if (myRocket.position.y > 6000) finishExitSurface();
                     surfaceSkyGroup.rotation.y += 0.0002; renderer.render(surfaceScene, camera);
-                } else if (surfaceControls.isLocked === true) {
-                    velocity.x -= velocity.x * 10.0 * delta; velocity.z -= velocity.z * 10.0 * delta; 
-                    direction.z = Number(moveForward) - Number(moveBackward); direction.x = Number(moveRight) - Number(moveLeft); direction.normalize();
+                } else if (surfaceControls.isLocked === true || isTouchDevice) {
+                    
+                    let inputX = 0, inputZ = 0;
+                    if (!isTouchDevice) {
+                        inputX = Number(moveRight) - Number(moveLeft);
+                        inputZ = Number(moveBackward) - Number(moveForward);
+                    } else {
+                        inputX = joystickVector.x;
+                        inputZ = joystickVector.y;
+                    }
+                    direction.set(inputX, 0, inputZ);
+                    if(direction.length() > 1) direction.normalize();
 
                     const speed = 300.0 / Math.max(0.5, gravityMult); 
-                    if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-                    if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+                    velocity.z = direction.z * speed;
+                    velocity.x = direction.x * speed;
 
                     let headBob = 0;
                     if (audioCtx) {
                         const isMoving = (Math.abs(velocity.x) > 10 || Math.abs(velocity.z) > 10);
-                        if (isMoving) { isWalking = true; walkGain.gain.value = 0.15 + Math.sin(time * 0.015) * 0.15; headBob = Math.sin(time * 0.012) * 1.2; } 
+                        if (isMoving && isGrounded) { isWalking = true; walkGain.gain.value = 0.15 + Math.sin(time * 0.015) * 0.15; headBob = Math.sin(time * 0.012) * 1.2; } 
                         else if (!isMoving && isWalking) { walkGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1); isWalking = false; }
                     }
 
-                    surfaceControls.moveRight(-velocity.x * delta); surfaceControls.moveForward(-velocity.z * delta);
+                    if(!isTouchDevice) {
+                        surfaceControls.moveRight(velocity.x * delta); surfaceControls.moveForward(-velocity.z * delta);
+                    } else {
+                        // Manual touch movement relative to camera
+                        const yawObj = surfaceControls.getObject();
+                        yawObj.translateX(velocity.x * delta);
+                        yawObj.translateZ(velocity.z * delta);
+                    }
 
                     const camPos = surfaceControls.getObject().position;
                     if(camPos.x > 3800) camPos.x = 3800; if(camPos.x < -3800) camPos.x = -3800;
                     if(camPos.z > 3800) camPos.z = 3800; if(camPos.z < -3800) camPos.z = -3800;
 
+                    // Jumping Physics & Gravity
                     if (isBlackHoleActive && blackHoleScale > 1.2) camPos.y += 250 * delta * (blackHoleScale - 1.2); 
-                    else camPos.y += ((playerHeight + headBob) - camPos.y) * (12.0 * delta * gravityMult); // Ground is always 0
+                    else {
+                        playerVelocityY -= 600.0 * delta * gravityMult; // Apply Gravity
+                        
+                        if (isJumping && isGrounded) {
+                            playerVelocityY = 250.0 / Math.max(0.5, gravityMult); // Jump force
+                            isGrounded = false; isJumping = false;
+                            if(audioCtx) { walkGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.05); walkGain.gain.setTargetAtTime(0, audioCtx.currentTime+0.1, 0.1); }
+                        }
+
+                        camPos.y += playerVelocityY * delta;
+                        const targetY = playerHeight + headBob; // Flat ground is at y=0
+
+                        if (camPos.y <= targetY) {
+                            camPos.y = targetY;
+                            playerVelocityY = 0;
+                            isGrounded = true;
+                        } else {
+                            isGrounded = false;
+                        }
+                    }
                     
                     if (weatherParticles.material.opacity > 0) {
                         weatherParticles.position.copy(camPos); const pos = weatherGeo.attributes.position;
