@@ -387,7 +387,7 @@
         ];
 
         // --- Multiplayer Firebase Logic ---
-        let auth, db, currentUser = null, appId = 'default-app-id';
+        let auth, db, currentUser = null, appId = 'solar-system'; 
         let remotePlayers = {}, lastSync = 0;
 
         async function initMultiplayer() {
@@ -460,7 +460,7 @@
                     }
 
                     const rp = remotePlayers[d.id];
-                    rp.lastUpdateLocalTime = now; // Store local timestamp of the update
+                    rp.lastUpdateLocalTime = now; 
                     
                     if(rp.scene !== data.scene) {
                         if(rp.scene === 'space') spaceScene.remove(rp.mesh); else surfaceScene.remove(rp.mesh);
@@ -475,7 +475,21 @@
                     const flame = rp.mesh.getObjectByName('flame');
                     if(flame && data.scene === 'space') flame.visible = true;
                 });
-            }, err => console.error("Firestore error: ", err));
+            }, err => {
+                console.error("Firestore error: ", err);
+                if (err.message && err.message.toLowerCase().includes('permission')) {
+                    document.getElementById('multiplayer-status').innerHTML = '<span style="color:#ff5252">Offline: Update Firestore Rules</span>';
+                    console.error(`🔥 FIREBASE SETUP REQUIRED: 
+To fix the 'Missing or insufficient permissions' error, go to your Firebase Console (test-83d1d).
+1. Click 'Firestore Database' in the left menu.
+2. Click the 'Rules' tab.
+3. Change the rules to:
+   match /{document=**} {
+     allow read, write: if true;
+   }
+4. Click 'Publish'.`);
+                }
+            });
         }
 
         function syncMyPosition() {
@@ -488,7 +502,6 @@
             const pos = activeSceneMode === 'space' ? camera.position.clone() : surfaceControls.getObject().position.clone();
             const rotY = activeSceneMode === 'space' ? camera.rotation.y : surfaceControls.getObject().rotation.y;
 
-            // Offset Y for surface so remote astronauts aren't floating (camera is at head height)
             if (activeSceneMode === 'surface') {
                 pos.y -= playerHeight;
             }
@@ -497,7 +510,11 @@
                 x: pos.x, y: pos.y, z: pos.z,
                 rx: 0, ry: rotY, rz: 0,
                 scene: sceneId, lastActive: now
-            }, {merge: true}).catch(e=>{});
+            }, {merge: true}).catch(e=>{
+                if (e.message && e.message.toLowerCase().includes('permission')) {
+                    document.getElementById('multiplayer-status').innerHTML = '<span style="color:#ff5252">Offline: Update Firestore Rules</span>';
+                }
+            });
         }
 
         // --- Core Engine Setup ---
@@ -1146,6 +1163,7 @@
                     if(!isTouchDevice) {
                         surfaceControls.moveRight(velocity.x * delta); surfaceControls.moveForward(-velocity.z * delta);
                     } else {
+                        // Manual touch movement relative to camera
                         const yawObj = surfaceControls.getObject();
                         yawObj.translateX(velocity.x * delta);
                         yawObj.translateZ(velocity.z * delta);
@@ -1155,18 +1173,19 @@
                     if(camPos.x > 3800) camPos.x = 3800; if(camPos.x < -3800) camPos.x = -3800;
                     if(camPos.z > 3800) camPos.z = 3800; if(camPos.z < -3800) camPos.z = -3800;
 
+                    // Jumping Physics & Gravity
                     if (isBlackHoleActive && blackHoleScale > 1.2) camPos.y += 250 * delta * (blackHoleScale - 1.2); 
                     else {
-                        playerVelocityY -= 600.0 * delta * gravityMult; 
+                        playerVelocityY -= 600.0 * delta * gravityMult; // Apply Gravity
                         
                         if (isJumping && isGrounded) {
-                            playerVelocityY = 250.0 / Math.max(0.5, gravityMult);
+                            playerVelocityY = 250.0 / Math.max(0.5, gravityMult); // Jump force
                             isGrounded = false; isJumping = false;
                             if(audioCtx) { walkGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.05); walkGain.gain.setTargetAtTime(0, audioCtx.currentTime+0.1, 0.1); }
                         }
 
                         camPos.y += playerVelocityY * delta;
-                        const targetY = playerHeight + headBob; 
+                        const targetY = playerHeight + headBob; // Flat ground is at y=0
 
                         if (camPos.y <= targetY) {
                             camPos.y = targetY;
