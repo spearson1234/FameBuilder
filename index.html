@@ -1188,7 +1188,15 @@
             prevTime = time;
         }
 
-        window.onload = init;
+        // Fix race condition where module loads after window.onload fires
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            init().catch(err => {
+                console.error(err);
+                document.getElementById('loading-text').innerText = "ERROR LOADING: " + err.message;
+            });
+        } else {
+            window.addEventListener('DOMContentLoaded', () => init().catch(console.error));
+        }
     </script>
 </body>
 </html>
