@@ -109,6 +109,29 @@
             line-height: 1.5;
         }
         
+        #focus-overlay {
+            position: absolute;
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh;
+            pointer-events: none;
+            z-index: 11;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            mask-image: radial-gradient(circle at center, transparent 10%, black 45%);
+            -webkit-mask-image: radial-gradient(circle at center, transparent 10%, black 45%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .icon-inline {
+            vertical-align: middle;
+            margin-right: 6px;
+            margin-bottom: 2px;
+            display: inline-block;
+        }
+
         .btn-group { 
             display: flex; 
             gap: 15px; 
@@ -477,6 +500,26 @@
             fill: white; 
         }
 
+        #btn-interact-mobile { 
+            bottom: 130px; 
+            right: 40px; 
+            width: 60px; 
+            height: 60px; 
+            box-shadow: 0 0 15px rgba(25,118,210,0.6); 
+            transition: 0.1s; 
+        }
+
+        #btn-interact-mobile:active { 
+            background: rgba(25, 118, 210, 0.8); 
+            transform: scale(0.95); 
+        }
+
+        #btn-interact-mobile svg { 
+            width: 28px; 
+            height: 28px; 
+            fill: white; 
+        }
+
         #btn-menu-mobile { 
             top: 20px; 
             left: 20px; 
@@ -493,6 +536,42 @@
             fill: white; 
         }
         
+        #btn-view-mobile { 
+            top: 20px; 
+            right: 20px; 
+            width: 50px; 
+            height: 50px; 
+            padding: 10px; 
+        }
+
+        #btn-chat-mobile { 
+            bottom: 220px; 
+            right: 40px; 
+            width: 60px; 
+            height: 60px; 
+            box-shadow: 0 0 15px rgba(76,175,80,0.6); 
+            border-color: #a5d6a7;
+            transition: 0.1s; 
+        }
+
+        #btn-chat-mobile:active {
+            background: rgba(76, 175, 80, 0.8); 
+            transform: scale(0.95); 
+        }
+
+        .chat-msg { 
+            background: rgba(10, 15, 25, 0.6); 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            margin-top: 5px; 
+            font-size: 14px; 
+            text-shadow: 0 1px 2px black; 
+            pointer-events: auto; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            backdrop-filter: blur(5px);
+            word-wrap: break-word;
+        }
+
         @media (max-width: 768px) {
             #ui-overlay { top: 15px; left: 15px; }
             h1 { font-size: 26px; }
@@ -500,6 +579,7 @@
             #time-slider-container { top: auto; bottom: 120px; right: 20px; }
             #fps-hint { display: none; }
             #planet-info { width: 95%; padding: 20px; }
+            #chat-log { bottom: 120px !important; }
         }
     </style>
 
@@ -525,15 +605,17 @@
         <h1>SOLAR SYSTEM</h1>
         <p>Multiplayer Procedural Explorer</p>
         <div class="controls-hint" id="desktop-hint">
-            🖱️ Hover & Click Planet to Orbit <br>
-            🖱️ Scroll OUT to view the Milky Way & Universe
+            <svg class="icon-inline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="7" ry="7"></rect><line x1="12" y1="6" x2="12" y2="10"></line></svg> Hover & Click Planet to Orbit <br>
+            <svg class="icon-inline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="7" ry="7"></rect><line x1="12" y1="6" x2="12" y2="10"></line></svg> Scroll OUT to view the Milky Way & Universe
         </div>
         <div class="controls-hint" id="mobile-hint" style="display:none;">
-            👆 Tap a Planet to Orbit <br>
-            👆 Pinch to Zoom | Drag to Rotate
+            <svg class="icon-inline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11V4a2 2 0 0 0-4 0v11l-3-3a2 2 0 0 0-2.83 2.83l5.5 5.5A2 2 0 0 0 9.09 21h4.82a5 5 0 0 0 4.9-4.1l.88-4.9a2.5 2.5 0 0 0-2.45-2.95h-2.1V11z"/></svg> Tap a Planet to Orbit <br>
+            <svg class="icon-inline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11V4a2 2 0 0 0-4 0v11l-3-3a2 2 0 0 0-2.83 2.83l5.5 5.5A2 2 0 0 0 9.09 21h4.82a5 5 0 0 0 4.9-4.1l.88-4.9a2.5 2.5 0 0 0-2.45-2.95h-2.1V11z"/></svg> Pinch to Zoom | Drag to Rotate
         </div>
         <div id="time-controls">
-            <button class="time-btn" onclick="window.setTimeScale(0)" id="btn-t0">⏸️</button>
+            <button class="time-btn" onclick="window.setTimeScale(0)" id="btn-t0" style="padding-top: 8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            </button>
             <button class="time-btn" onclick="window.setTimeScale(0.1)" id="btn-t01">0.1x</button>
             <button class="time-btn active" onclick="window.setTimeScale(1)" id="btn-t1">1x</button>
             <button class="time-btn" onclick="window.setTimeScale(5)" id="btn-t5">5x</button>
@@ -558,8 +640,21 @@
             <label>Time of Day: <strong id="time-display" style="color:#fff;">12:00</strong></label>
             <input type="range" id="surface-time" min="0" max="24" step="0.1" value="12">
         </div>
-        <div id="fps-hint"><strong>W A S D</strong> Move &nbsp;|&nbsp; <strong>Mouse</strong> Look &nbsp;|&nbsp; <strong>SPACE</strong> Jump &nbsp;|&nbsp; <strong>U</strong> Menu</div>
+        <div id="fps-hint"><strong>W A S D</strong> Move &nbsp;|&nbsp; <strong>SPACE</strong> Jump &nbsp;|&nbsp; <strong>CLICK</strong> Talk &nbsp;|&nbsp; <strong>V</strong> View &nbsp;|&nbsp; <strong>T</strong> Chat &nbsp;|&nbsp; <strong>U</strong> Menu</div>
         <div id="crosshair"></div>
+        <div id="chat-subtitle" style="display:none; position:absolute; bottom:25%; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); padding:12px 25px; border-radius:15px; border:1px solid rgba(255,255,255,0.3); font-size:18px; font-style:italic; font-weight:bold; letter-spacing:1px; pointer-events:none; z-index:100; backdrop-filter:blur(5px);">
+            Astronaut: *bebebwjbwa*
+        </div>
+        
+        <!-- Live Chat UI -->
+        <div id="chat-log" style="position:absolute; bottom:80px; left:30px; width:350px; max-height:200px; overflow-y:hidden; pointer-events:none; display:flex; flex-direction:column; justify-content:flex-end; z-index:20;">
+            <!-- messages go here -->
+        </div>
+        <div id="chat-input-wrapper" style="position:absolute; bottom:30px; left:30px; display:none; z-index:30; pointer-events:auto; display: flex; gap: 10px;">
+            <input type="text" id="chat-input" placeholder="Type message... (Press Enter)" autocomplete="off" maxlength="100" style="width: 280px; padding: 12px; border-radius: 8px; border: none; background: rgba(10, 15, 25, 0.8); color: white; outline: none; font-family: inherit; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(10px);">
+            <button id="btn-send-chat" style="padding: 12px 20px; background: #1976d2; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Send</button>
+        </div>
+
         <div id="pause-menu">
             <h2>EXPLORATION PAUSED</h2><br>
             <div class="btn-group">
@@ -575,8 +670,17 @@
         <button class="mobile-btn" id="btn-menu-mobile" onclick="window.togglePauseMenu()">
             <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
         </button>
+        <button class="mobile-btn" id="btn-view-mobile">
+            <svg viewBox="0 0 24 24" fill="white"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5 5zM12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        </button>
         <button class="mobile-btn" id="btn-jump-mobile">
             <svg viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
+        </button>
+        <button class="mobile-btn" id="btn-interact-mobile">
+            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        </button>
+        <button class="mobile-btn" id="btn-chat-mobile">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
         </button>
     </div>
 
@@ -595,12 +699,13 @@
         <button class="action-btn primary" style="background:#b71c1c; border-color:#f44336; margin-top: 20px;" onclick="location.reload()">REBOOT UNIVERSE</button>
     </div>
 
+    <div id="focus-overlay"></div>
     <div id="canvas-container"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Environment Details
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -675,6 +780,93 @@
             
             noiseSource.connect(walkFilter).connect(walkGain).connect(audioCtx.destination);
             noiseSource.start();
+        }
+
+        let talkOsc, talkGain, talkFilter, talkTimer;
+        let isInteracting = false;
+        let interactingAstro = null;
+        let targetFov = 50;
+
+        function startAstronautTalk() {
+            initAudio();
+            if(talkOsc) return;
+
+            talkOsc = audioCtx.createOscillator();
+            talkOsc.type = 'square';
+            
+            talkFilter = audioCtx.createBiquadFilter();
+            talkFilter.type = 'lowpass';
+            talkFilter.frequency.value = 1000;
+
+            talkGain = audioCtx.createGain();
+            talkGain.gain.value = 0;
+
+            talkOsc.connect(talkFilter).connect(talkGain).connect(audioCtx.destination);
+            talkOsc.start();
+
+            talkTimer = setInterval(() => {
+                const baseFreq = 400 + Math.random() * 600; 
+                talkOsc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                talkFilter.frequency.setValueAtTime(600 + Math.random() * 800, audioCtx.currentTime);
+                
+                // Envelopes to make the "bwa" syllables
+                talkGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                talkGain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.02);
+                talkGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.09);
+
+                // Randomly skip a beat for natural pausing
+                if(Math.random() > 0.8) {
+                    talkGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                }
+            }, 120);
+        }
+
+        function stopAstronautTalk() {
+            if(!isInteracting) return;
+            isInteracting = false;
+            interactingAstro = null;
+            targetFov = 50;
+            document.getElementById('focus-overlay').style.opacity = '0';
+            
+            if(talkOsc) {
+                try { talkOsc.stop(); } catch(e){}
+                talkOsc.disconnect();
+                talkOsc = null;
+            }
+            if(talkTimer) {
+                clearInterval(talkTimer);
+                talkTimer = null;
+            }
+            document.getElementById('chat-subtitle').style.display = 'none';
+        }
+
+        function tryInteractSurface() {
+            if (activeSceneMode !== 'surface') return;
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            // Check if we hit an alien and we are close enough (distance < 70)
+            const hits = raycaster.intersectObjects(alienGroup.children, true);
+            if (hits.length > 0 && hits[0].distance < 70) { 
+                isInteracting = true;
+                targetFov = 20; // Dramatic cinematic zoom
+                document.getElementById('focus-overlay').style.opacity = '1';
+
+                let alienRoot = hits[0].object;
+                while(alienRoot.parent && alienRoot.parent !== alienGroup) {
+                    alienRoot = alienRoot.parent;
+                }
+                interactingAstro = alienRoot;
+
+                startAstronautTalk();
+                const subtitle = document.getElementById('chat-subtitle');
+                subtitle.style.display = 'block';
+                
+                const fact = focusedPlanet && focusedPlanet.data.funFact ? focusedPlanet.data.funFact : "I'm just a procedural explorer, wandering the cosmos.";
+                const gibberishPrefix = ["*bebebwjbwa* ", "*bzzrt* ", "*meep morp* ", "*bzzt* "];
+                const prefix = gibberishPrefix[Math.floor(Math.random() * gibberishPrefix.length)];
+                
+                subtitle.innerText = "Astronaut: " + prefix + fact;
+            }
         }
 
         // --- 1. Procedural Noise (FBM) ---
@@ -1034,27 +1226,159 @@
         // --- Model Creators (Astronauts, Rockets & Dinosaurs) ---
         function createAstronaut() {
             const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8});
-            
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 7, 16), mat); 
-            body.position.y = 3.5;
-            
-            const head = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 16), mat); 
-            head.position.y = 8.5;
-            
-            const visorGeo = new THREE.SphereGeometry(2.55, 16, 16, 0, Math.PI*2, 0, Math.PI/2.2);
-            const visorMat = new THREE.MeshStandardMaterial({color: 0xffcc00, metalness: 1, roughness: 0.1});
-            const visor = new THREE.Mesh(visorGeo, visorMat);
-            visor.position.y = 8.5; 
+
+            const suitMat = new THREE.MeshStandardMaterial({color: 0xd9d9d9, roughness: 0.9});
+            const redMat = new THREE.MeshStandardMaterial({color: 0xc42020, roughness: 0.7});
+            const darkMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8});
+            const visorMat = new THREE.MeshStandardMaterial({color: 0x050505, metalness: 0.9, roughness: 0.1});
+            const packMat = new THREE.MeshStandardMaterial({color: 0xe8e8e8, roughness: 0.6});
+
+            // Body Group
+            const bodyGroup = new THREE.Group();
+            bodyGroup.position.y = 8; // Adjust height for legs
+            group.add(bodyGroup);
+
+            // Torso
+            const torsoGeo = new THREE.CylinderGeometry(2.2, 2.5, 6, 16);
+            const torso = new THREE.Mesh(torsoGeo, suitMat);
+            bodyGroup.add(torso);
+
+            // Belt (Red)
+            const belt = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.6, 16), redMat);
+            belt.position.y = -2.8;
+            torso.add(belt);
+
+            // Neck ring (Red)
+            const neckRing = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.4, 16), redMat);
+            neckRing.position.y = 3;
+            torso.add(neckRing);
+
+            // Head
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 4.5;
+            torso.add(headGroup);
+
+            const helmet = new THREE.Mesh(new THREE.SphereGeometry(2.8, 32, 32), suitMat);
+            headGroup.add(helmet);
+
+            const visor = new THREE.Mesh(new THREE.SphereGeometry(2.6, 32, 32, 0, Math.PI * 2, 0, Math.PI / 1.8), visorMat);
             visor.rotation.x = Math.PI / 2;
+            visor.position.set(0, -0.2, 0.5);
+            headGroup.add(visor);
+
+            // Backpack
+            const packGroup = new THREE.Group();
+            packGroup.position.set(0, 0, -3.2);
+            torso.add(packGroup);
             
-            const pack = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 2.5), mat); 
-            pack.position.set(0, 4.5, -3);
-            
+            const packMain = new THREE.Mesh(new THREE.BoxGeometry(4.5, 7, 2.5), packMat);
+            packGroup.add(packMain);
+
+            const packTop = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.5, 2.5), packMat);
+            packTop.position.y = 5;
+            packGroup.add(packTop);
+
+            // Side Antenna
+            const antennaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 3, 8), suitMat);
+            antennaBase.position.set(-2.8, 2, 0);
+            packGroup.add(antennaBase);
+
+            const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5, 8), darkMat);
+            antenna.position.set(-2.8, 6, 0);
+            packGroup.add(antenna);
+
+            const antennaTip = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), suitMat);
+            antennaTip.position.set(-2.8, 8.5, 0);
+            packGroup.add(antennaTip);
+
+            // Chest Details (Patches, Pockets)
+            const redPatch = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 0.3), redMat);
+            redPatch.position.set(-1.2, 1.5, 2.4);
+            torso.add(redPatch);
+
+            const chestPocket = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.4), suitMat);
+            chestPocket.position.set(1.2, 1.2, 2.4);
+            torso.add(chestPocket);
+
+            // Limbs Helper
+            function createLimb(isArm) {
+                const limbGroup = new THREE.Group();
+                
+                // Upper
+                const upperGeo = isArm ? new THREE.CylinderGeometry(0.9, 0.8, 3.5, 16) : new THREE.CylinderGeometry(1.2, 1.0, 4, 16);
+                const upper = new THREE.Mesh(upperGeo, suitMat);
+                upper.position.y = isArm ? -1.75 : -2;
+                limbGroup.add(upper);
+
+                // Joint
+                const jointGeo = isArm ? new THREE.SphereGeometry(0.85, 16, 16) : new THREE.SphereGeometry(1.05, 16, 16);
+                const joint = new THREE.Mesh(jointGeo, suitMat);
+                joint.position.y = isArm ? -3.5 : -4;
+                limbGroup.add(joint);
+
+                // Lower
+                const lowerGeo = isArm ? new THREE.CylinderGeometry(0.8, 0.7, 3.5, 16) : new THREE.CylinderGeometry(1.0, 0.9, 4, 16);
+                const lower = new THREE.Mesh(lowerGeo, suitMat);
+                lower.position.y = isArm ? -5.25 : -6;
+                limbGroup.add(lower);
+
+                // Pockets
+                const sidePocket = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 1), suitMat);
+                sidePocket.position.set(isArm ? 0.6 : 0.8, -1.5, 0);
+                limbGroup.add(sidePocket);
+
+                // Extremities
+                if (isArm) {
+                    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.4, 16), redMat);
+                    cuff.position.y = -6.8;
+                    limbGroup.add(cuff);
+
+                    const glove = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), suitMat);
+                    glove.position.y = -7.5;
+                    limbGroup.add(glove);
+                } else {
+                    const kneePad = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.2), suitMat);
+                    kneePad.position.set(0, -4, 0.5);
+                    limbGroup.add(kneePad);
+
+                    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.5, 16), redMat);
+                    cuff.position.y = -7.8;
+                    limbGroup.add(cuff);
+
+                    const boot = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 2.8), suitMat);
+                    boot.position.set(0, -8.5, 0.4);
+                    limbGroup.add(boot);
+                }
+
+                return limbGroup;
+            }
+
+            const leftArm = createLimb(true);
+            leftArm.position.set(3.2, 1.5, 0);
+            torso.add(leftArm);
+
+            const rightArm = createLimb(true);
+            rightArm.position.set(-3.2, 1.5, 0);
+            rightArm.children[3].position.x = -0.6; // mirror pocket
+            torso.add(rightArm);
+
+            const leftLeg = createLimb(false);
+            leftLeg.position.set(1.4, -3, 0);
+            bodyGroup.add(leftLeg);
+
+            const rightLeg = createLimb(false);
+            rightLeg.position.set(-1.4, -3, 0);
+            rightLeg.children[3].position.x = -0.8; // mirror pocket
+            bodyGroup.add(rightLeg);
+
+            group.userData = { leftArm, rightArm, leftLeg, rightLeg };
+
+            // Scale and Light
             const light = new THREE.PointLight(0xffffff, 0.5, 30); 
             light.position.set(0, 9, 3);
-            
-            group.add(body, head, visor, pack, light);
+            group.add(light);
+
+            group.scale.set(1.2, 1.2, 1.2); 
             return group;
         }
 
@@ -1204,6 +1528,11 @@
         let isBlackHoleActive = false;
         let blackHoleSpace, blackHoleSky, blackHoleScale = 1;
         
+        let isThirdPerson = false;
+        let localPlayerMesh = null;
+        let localPlayerWalkPhase = 0;
+        let isChatting = false;
+
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         raycaster.params.Points.threshold = 2000;
@@ -1252,6 +1581,10 @@
             { name: "Uranus", type: "uranus", size: 2.5, distance: 155, orbitSpeed: 0.0004, rotationSpeed: 0.03, atmoCol: 0xd1e7e7, desc: "An ice giant that rotates on its side.", funFact: "Uranus is the coldest planet in the solar system." },
             { name: "Neptune", type: "neptune", size: 2.4, distance: 185, orbitSpeed: 0.0001, rotationSpeed: 0.032, atmoCol: 0x2b318a, desc: "A dark, cold, and supersonic wind-whipped ice giant.", funFact: "Neptune has the strongest winds in the solar system, reaching up to 1,200 mph." }
         ];
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;','<': '&lt;','>': '&gt;',"'": '&#39;','"': '&quot;'}[tag] || tag));
+        }
 
         // --- Multiplayer Firebase Logic ---
         let auth, db, currentUser = null;
@@ -1309,12 +1642,36 @@
                     if(user) {
                         document.getElementById('multiplayer-status').innerText = 'Connected: ' + user.uid.substring(0,6);
                         listenToPlayers();
+                        listenToChat();
                     }
                 });
             } catch(e) { 
                 console.error("Multiplayer Init Error:", e); 
                 document.getElementById('multiplayer-status').innerText = 'Multiplayer Error'; 
             }
+        }
+
+        function listenToChat() {
+            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat');
+            onSnapshot(chatRef, snap => {
+                let msgs = [];
+                snap.forEach(d => msgs.push(d.data()));
+                msgs.sort((a,b) => a.time - b.time); 
+                if(msgs.length > 20) msgs = msgs.slice(msgs.length - 20);
+
+                const container = document.getElementById('chat-log');
+                container.innerHTML = '';
+                msgs.forEach(m => {
+                    const el = document.createElement('div');
+                    el.className = 'chat-msg';
+                    const isMe = m.uid === currentUser?.uid;
+                    const name = isMe ? 'You' : m.uid.substring(0,6);
+                    const color = isMe ? '#90caf9' : '#a5d6a7';
+                    el.innerHTML = `<strong style="color:${color}">${name}:</strong> ${escapeHTML(m.text)}`;
+                    container.appendChild(el);
+                });
+                container.scrollTop = container.scrollHeight;
+            }, err => console.error("Chat sync error", err));
         }
 
         function listenToPlayers() {
@@ -1371,15 +1728,6 @@
                 console.error("Firestore error: ", err);
                 if (err.message && err.message.toLowerCase().includes('permission')) {
                     document.getElementById('multiplayer-status').innerHTML = '<span style="color:#ff5252">Offline: Update Firestore Rules</span>';
-                    console.error(`🔥 FIREBASE SETUP REQUIRED: 
-To fix the 'Missing or insufficient permissions' error, go to your Firebase Console (test-83d1d).
-1. Click 'Firestore Database' in the left menu.
-2. Click the 'Rules' tab.
-3. Change the rules to:
-   match /{document=**} {
-     allow read, write: if true;
-   }
-4. Click 'Publish'.`);
                 }
             });
         }
@@ -1391,12 +1739,15 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
             lastSync = now;
 
             const sceneId = activeSceneMode === 'space' ? 'space' : `surface_${focusedPlanet ? focusedPlanet.data.type : 'unknown'}`;
-            const pos = activeSceneMode === 'space' ? camera.position.clone() : surfaceControls.getObject().position.clone();
-            const rotY = activeSceneMode === 'space' ? camera.rotation.y : surfaceControls.getObject().rotation.y;
-
-            if (activeSceneMode === 'surface') {
-                pos.y -= playerHeight;
+            
+            let pos;
+            if (activeSceneMode === 'space') pos = camera.position.clone();
+            else {
+                pos = isThirdPerson ? localPlayerMesh.position.clone() : surfaceControls.getObject().position.clone();
+                if(!isThirdPerson) pos.y -= playerHeight;
             }
+            
+            const rotY = activeSceneMode === 'space' ? camera.rotation.y : surfaceControls.getObject().rotation.y;
 
             setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid), {
                 x: pos.x, 
@@ -1412,6 +1763,29 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
                     document.getElementById('multiplayer-status').innerHTML = '<span style="color:#ff5252">Offline: Update Firestore Rules</span>';
                 }
             });
+        }
+
+        function toggleView() {
+            isThirdPerson = !isThirdPerson;
+            if(localPlayerMesh) {
+                localPlayerMesh.visible = isThirdPerson;
+            }
+        }
+
+        function openChat() {
+            if(!currentUser) return;
+            isChatting = true;
+            moveForward = false; moveBackward = false; moveLeft = false; moveRight = false;
+            document.getElementById('chat-input-wrapper').style.display = 'flex';
+            document.getElementById('chat-input').value = '';
+            document.getElementById('chat-input').focus();
+            if (!isTouchDevice) surfaceControls.unlock();
+        }
+
+        function closeChat() {
+            isChatting = false;
+            document.getElementById('chat-input-wrapper').style.display = 'none';
+            if (!isTouchDevice) surfaceControls.lock();
         }
 
         // --- Core Engine Setup ---
@@ -1463,18 +1837,65 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
             // Setup Touch Listeners
             setupTouchControls();
 
+            window.addEventListener('mousedown', (e) => {
+                if (activeSceneMode === 'surface' && surfaceControls.isLocked && !isChatting) {
+                    tryInteractSurface();
+                }
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (activeSceneMode === 'surface') {
+                    stopAstronautTalk();
+                }
+            });
+
+            const chatInput = document.getElementById('chat-input');
+            chatInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    const txt = chatInput.value.trim();
+                    if (txt && currentUser) {
+                        addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'chat'), {
+                            uid: currentUser.uid,
+                            text: txt,
+                            time: Date.now()
+                        }).catch(err => console.error(err));
+                    }
+                    closeChat();
+                } else if (e.key === 'Escape') {
+                    closeChat();
+                }
+                e.stopPropagation();
+            });
+
+            document.getElementById('btn-send-chat').addEventListener('click', () => {
+                const txt = chatInput.value.trim();
+                if (txt && currentUser) {
+                    addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'chat'), {
+                        uid: currentUser.uid,
+                        text: txt,
+                        time: Date.now()
+                    }).catch(err => console.error(err));
+                }
+                closeChat();
+            });
+
             // Prevent UI touches from triggering look
             const timeSliderContainer = document.getElementById('time-slider-container');
             timeSliderContainer.addEventListener('touchstart', e => e.stopPropagation());
             timeSliderContainer.addEventListener('touchmove', e => e.stopPropagation());
 
+            document.getElementById('chat-input-wrapper').addEventListener('touchstart', e => e.stopPropagation());
+            document.getElementById('chat-input-wrapper').addEventListener('touchmove', e => e.stopPropagation());
+
             surfaceControls.addEventListener('lock', () => { 
-                document.getElementById('pause-menu').style.display = 'none'; 
-                document.getElementById('crosshair').style.display = 'block'; 
+                if(activeSceneMode === 'surface' && !isChatting) { 
+                    document.getElementById('pause-menu').style.display = 'none'; 
+                    document.getElementById('crosshair').style.display = 'block'; 
+                }
             });
             
             surfaceControls.addEventListener('unlock', () => { 
-                if(activeSceneMode === 'surface') { 
+                if(activeSceneMode === 'surface' && !isChatting) { 
                     document.getElementById('pause-menu').style.display = 'block'; 
                     document.getElementById('crosshair').style.display = 'none'; 
                 } 
@@ -1591,17 +2012,35 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
             uiLayer.addEventListener('touchend', handleEnd); 
             uiLayer.addEventListener('touchcancel', handleEnd);
 
-            // Jump Button
-            const jumpBtn = document.getElementById('btn-jump-mobile');
-            jumpBtn.addEventListener('touchstart', e => { 
+            // Mobile Buttons
+            document.getElementById('btn-jump-mobile').addEventListener('touchstart', e => { 
                 e.preventDefault(); 
-                if(!isLaunching && activeSceneMode === 'surface') {
-                    isJumping = true; 
-                }
+                if(!isLaunching && activeSceneMode === 'surface' && !isChatting) isJumping = true; 
             });
-            jumpBtn.addEventListener('touchend', e => { 
+            document.getElementById('btn-jump-mobile').addEventListener('touchend', e => { 
+                e.preventDefault(); isJumping = false; 
+            });
+
+            document.getElementById('btn-view-mobile').addEventListener('touchstart', e => { 
                 e.preventDefault(); 
-                isJumping = false; 
+                if(!isLaunching && activeSceneMode === 'surface') toggleView();
+            });
+
+            document.getElementById('btn-chat-mobile').addEventListener('touchstart', e => { 
+                e.preventDefault(); 
+                if(!isLaunching && activeSceneMode === 'surface') openChat();
+            });
+
+            const interactBtn = document.getElementById('btn-interact-mobile');
+            interactBtn.addEventListener('touchstart', e => { 
+                e.preventDefault(); 
+                if(!isLaunching && activeSceneMode === 'surface') tryInteractSurface();
+            });
+            interactBtn.addEventListener('touchend', e => { 
+                e.preventDefault(); stopAstronautTalk();
+            });
+            interactBtn.addEventListener('touchcancel', e => { 
+                e.preventDefault(); stopAstronautTalk();
             });
         }
 
@@ -1885,7 +2324,14 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
             dinosaurGroup = new THREE.Group();
             surfaceScene.add(dinosaurGroup);
 
+            alienGroup = new THREE.Group();
+            surfaceScene.add(alienGroup);
+
             myRocket = createNASARocket();
+
+            localPlayerMesh = createAstronaut();
+            surfaceScene.add(localPlayerMesh);
+            localPlayerMesh.visible = false;
         }
 
         function onWindowResize() { 
@@ -2065,7 +2511,6 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
             spaceControls.minDistance = 12; 
             spaceControls.maxDistance = 150000;
             document.getElementById('planet-info').style.display = 'none'; 
-            document.getElementById('hint-text') && (document.getElementById('hint-text').innerHTML = "🖱️ Hover & Click Planet to Orbit <br>🖱️ Scroll OUT to view the Milky Way & Universe");
         };
 
         let globalBuildingTex = null;
@@ -2243,6 +2688,28 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
             dinosaurGroup.add(giantRex);
         }
 
+        function buildAIAstronauts(count) {
+            for(let i=0; i<count; i++) {
+                const astro = createAstronaut();
+                
+                // Random position near the spawn point
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 400; 
+                astro.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
+                
+                // Random direction
+                astro.rotation.y = Math.random() * Math.PI * 2;
+                
+                // Animation settings inside userData
+                astro.userData.walkPhase = Math.random() * Math.PI * 2;
+                astro.userData.speed = 8 + Math.random() * 12; 
+                astro.userData.turnSpeed = (Math.random() - 0.5) * 0.5;
+
+                alienGroup.add(astro);
+                aliens.push(astro);
+            }
+        }
+
         function landOn(mesh, data) {
             focusedPlanet = { mesh, data }; 
             viewState = 'transitioning_in'; 
@@ -2341,11 +2808,20 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
 
             cityGroup.clear(); 
             dinosaurGroup.clear();
+            alienGroup.clear();
             bldgMaterials = []; 
             ambientRockets = [];
+            aliens = [];
             
-            if (type === 'earth') buildEarthCity();
-            if (type === 'earth_old') buildEarthOldDinosaurs();
+            if (type === 'earth') {
+                buildEarthCity();
+            } else if (type === 'earth_old') {
+                buildEarthOldDinosaurs();
+            } else if (type === 'moon' || type === 'mars') {
+                buildAIAstronauts(15);
+            } else {
+                buildAIAstronauts(5);
+            }
 
             isLaunching = false; 
             if (myRocket.parent) surfaceScene.remove(myRocket);
@@ -2512,10 +2988,22 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
 
         const onKeyDown = function (e) { 
             if (activeSceneMode !== 'surface') return; 
+            if (isChatting) {
+                return; // Let user type, don't move
+            }
             if (e.code === 'KeyU') { 
                 window.togglePauseMenu(); 
                 return; 
             } 
+            if (e.code === 'KeyV') { 
+                toggleView(); 
+                return; 
+            } 
+            if (e.code === 'KeyT') { 
+                e.preventDefault();
+                openChat(); 
+                return; 
+            }
             switch (e.code) { 
                 case 'KeyW': moveForward = true; break; 
                 case 'KeyA': moveLeft = true; break; 
@@ -2528,7 +3016,7 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
         };
 
         const onKeyUp = function (e) { 
-            if (activeSceneMode !== 'surface') return; 
+            if (activeSceneMode !== 'surface' || isChatting) return; 
             switch (e.code) { 
                 case 'KeyW': moveForward = false; break; 
                 case 'KeyA': moveLeft = false; break; 
@@ -2594,6 +3082,31 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
                 
                 const myScene = activeSceneMode === 'space' ? 'space' : `surface_${focusedPlanet ? focusedPlanet.data.type : 'unknown'}`;
                 rp.mesh.visible = (rp.scene === myScene);
+
+                // Multiplayer Walk Animation
+                const dist = rp.targetPos.distanceTo(rp.mesh.position);
+                if (dist > 0.1 && rp.scene !== 'space') {
+                    rp.walkPhase = (rp.walkPhase || 0) + delta * 12;
+                    rp.mesh.position.y = rp.targetPos.y + Math.abs(Math.sin(rp.walkPhase)) * 1.5;
+                } else {
+                    rp.walkPhase = 0;
+                    rp.mesh.position.y = rp.targetPos.y;
+                }
+
+                const ud = rp.mesh.userData;
+                if (ud.leftArm) {
+                    ud.leftArm.rotation.x = Math.sin(rp.walkPhase || 0) * 0.6;
+                    ud.rightArm.rotation.x = Math.sin((rp.walkPhase || 0) + Math.PI) * 0.6;
+                    ud.leftLeg.rotation.x = Math.sin((rp.walkPhase || 0) + Math.PI) * 0.6;
+                    ud.rightLeg.rotation.x = Math.sin(rp.walkPhase || 0) * 0.6;
+                }
+            }
+
+            // Cinematic FOV zoom logic
+            if (camera.fov !== targetFov) {
+                camera.fov += (targetFov - camera.fov) * 8 * delta;
+                if(Math.abs(camera.fov - targetFov) < 0.5) camera.fov = targetFov;
+                camera.updateProjectionMatrix();
             }
 
             if (activeSceneMode === 'space') {
@@ -2730,6 +3243,69 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
                     });
                 }
 
+                // Check Interaction State & LookAt
+                if(isInteracting && interactingAstro) {
+                    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                    const hits = raycaster.intersectObjects(alienGroup.children, true);
+                    // Break interaction if player looks away or moves too far
+                    if (hits.length === 0 || hits[0].distance > 80) {
+                        stopAstronautTalk(); 
+                    } else {
+                        // Make the interacted astronaut turn to look at the player
+                        const targetPos = camera.position.clone();
+                        targetPos.y = interactingAstro.position.y; // keep vertical upright
+                        interactingAstro.lookAt(targetPos);
+                    }
+                }
+
+                // Animate AI Astronauts
+                if (aliens && aliens.length > 0) {
+                    aliens.forEach(astro => {
+                        const ud = astro.userData;
+
+                        // Pause movement and animation if currently interacting
+                        if (isInteracting && astro === interactingAstro) {
+                            if (ud.leftArm) {
+                                ud.leftArm.rotation.x *= 0.9;
+                                ud.rightArm.rotation.x *= 0.9;
+                                ud.leftLeg.rotation.x *= 0.9;
+                                ud.rightLeg.rotation.x *= 0.9;
+                            }
+                            return; // skip movement
+                        }
+
+                        ud.walkPhase += delta * 8.0; // Bouncy walk speed
+                        
+                        // Bouncy space walk (bobbing up and down)
+                        astro.position.y = Math.abs(Math.sin(ud.walkPhase)) * 1.5;
+                        astro.rotation.z = Math.sin(ud.walkPhase * 0.5) * 0.05; // slight side-to-side wobble
+                        
+                        // Limb animation
+                        if(ud.leftArm) {
+                            ud.leftArm.rotation.x = Math.sin(ud.walkPhase) * 0.6;
+                            ud.rightArm.rotation.x = Math.sin(ud.walkPhase + Math.PI) * 0.6;
+                            ud.leftLeg.rotation.x = Math.sin(ud.walkPhase + Math.PI) * 0.6;
+                            ud.rightLeg.rotation.x = Math.sin(ud.walkPhase) * 0.6;
+                        }
+                        
+                        // Movement Engine (+Z is forward for createAstronaut)
+                        astro.translateZ(ud.speed * delta);
+                        
+                        // Boundary Clamp
+                        if (astro.position.x > 3800 || astro.position.x < -3800 || astro.position.z > 3800 || astro.position.z < -3800) {
+                            astro.rotation.y += Math.PI; 
+                            astro.position.x = Math.max(-3800, Math.min(3800, astro.position.x));
+                            astro.position.z = Math.max(-3800, Math.min(3800, astro.position.z));
+                        }
+                        
+                        // Wander logic
+                        if (Math.random() < 0.01) {
+                            ud.turnSpeed = (Math.random() - 0.5) * 1.5;
+                        }
+                        astro.rotation.y += ud.turnSpeed * delta;
+                    });
+                }
+
                 if (isBlackHoleActive && blackHoleSky) {
                     blackHoleScale += 0.05 * delta; 
                     blackHoleSky.scale.set(blackHoleScale, blackHoleScale, blackHoleScale); 
@@ -2810,10 +3386,10 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
                         }
                     }
 
-                    if(!isTouchDevice) {
+                    if(!isTouchDevice && !isChatting) {
                         surfaceControls.moveRight(velocity.x * delta); 
                         surfaceControls.moveForward(-velocity.z * delta);
-                    } else {
+                    } else if (isTouchDevice && !isChatting) {
                         // Manual touch movement relative to camera
                         const yawObj = surfaceControls.getObject();
                         yawObj.translateX(velocity.x * delta);
@@ -2825,6 +3401,28 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
                     if(camPos.x < -3800) camPos.x = -3800;
                     if(camPos.z > 3800) camPos.z = 3800; 
                     if(camPos.z < -3800) camPos.z = -3800;
+
+                    // Local Player Mesh Update
+                    if (localPlayerMesh) {
+                        localPlayerMesh.position.copy(camPos);
+                        localPlayerMesh.position.y -= playerHeight;
+                        localPlayerMesh.rotation.y = camera.rotation.y + Math.PI;
+                        
+                        if (isWalking) {
+                            localPlayerWalkPhase += delta * 12;
+                            localPlayerMesh.position.y += Math.abs(Math.sin(localPlayerWalkPhase)) * 1.5;
+                        } else {
+                            localPlayerWalkPhase = 0;
+                        }
+
+                        const ud = localPlayerMesh.userData;
+                        if (ud.leftArm) {
+                            ud.leftArm.rotation.x = Math.sin(localPlayerWalkPhase) * 0.6;
+                            ud.rightArm.rotation.x = Math.sin(localPlayerWalkPhase + Math.PI) * 0.6;
+                            ud.leftLeg.rotation.x = Math.sin(localPlayerWalkPhase + Math.PI) * 0.6;
+                            ud.rightLeg.rotation.x = Math.sin(localPlayerWalkPhase) * 0.6;
+                        }
+                    }
 
                     // Jumping Physics & Gravity
                     if (isBlackHoleActive && blackHoleScale > 1.2) {
@@ -2872,7 +3470,23 @@ To fix the 'Missing or insufficient permissions' error, go to your Firebase Cons
                     surfaceSkyGroup.rotation.y += 0.0002;
                 }
                 
-                if(!isLaunching) renderer.render(surfaceScene, camera); 
+                if (!isLaunching) {
+                    if (isThirdPerson) {
+                        // Offset camera backwards and angled down slightly to see character
+                        const offset = new THREE.Vector3(0, 4, 18);
+                        offset.applyEuler(new THREE.Euler(camera.rotation.x, camera.rotation.y, 0, 'YXZ'));
+                        camera.position.add(offset);
+                        camera.rotation.x -= 0.15;
+                        
+                        renderer.render(surfaceScene, camera);
+                        
+                        // Restore collision bounds
+                        camera.rotation.x += 0.15;
+                        camera.position.sub(offset);
+                    } else {
+                        renderer.render(surfaceScene, camera);
+                    }
+                }
             }
             prevTime = time;
         }
