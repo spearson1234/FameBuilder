@@ -75,19 +75,20 @@
         </div>
     </div>
 
-    <!-- VIEW: LOCATING -->
+    <!-- VIEW: LOCATING (Waiting for Permission) -->
     <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
-        <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">ACQUIRING SATELLITE LOCK...</h2>
-        <p class="text-gray-400 text-sm mt-4 max-w-xs">Connecting to GPS. This may take a moment...</p>
+        <div class="text-6xl mb-6 animate-bounce">👆</div>
+        <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">WAITING FOR PERMISSION...</h2>
+        <p class="text-gray-300 text-lg mt-4 max-w-xs font-bold">Please click "Allow" on the location popup to enter the game!</p>
     </div>
 
     <!-- VIEW: ACTIVE MAP -->
     <div id="view-playing" class="hidden absolute inset-0 z-10">
         <div id="map" class="absolute inset-0 z-0"></div>
         
-        <!-- GPS WARNING BANNER (Only shows if GPS is taking too long) -->
+        <!-- GPS WARNING BANNER (Shows if it's struggling to get exact satellite lock) -->
         <div id="gps-warning" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-5 py-2 rounded-full text-xs font-black z-20 animate-pulse shadow-lg whitespace-nowrap tracking-wider">
-            WAITING FOR GPS SIGNAL...
+            IMPROVING GPS SIGNAL...
         </div>
 
         <!-- HUD -->
@@ -199,7 +200,6 @@
             }
         });
 
-        // Haversine Distance
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3;
             const p1 = lat1 * Math.PI / 180;
@@ -216,21 +216,20 @@
             setDoc(playerDocRef, { role: role, lat: lat, lng: lng, isCaught: isCaught, lastActive: Date.now() }, { merge: true });
         };
 
-        // --- 2. JOIN GAME LOGIC (UNBLOCKABLE) ---
+        // --- 2. JOIN GAME LOGIC (Instant Prompt Fix) ---
         window.joinGame = (selectedRole) => {
             if (!currentUser) return;
             myRole = selectedRole;
             isCaught = false;
             document.getElementById('error-msg').classList.add('hidden');
-            showView('view-locating');
-
+            
             if (!navigator.geolocation) {
-                // Device straight up doesn't have GPS. Let them in anyway with default loc.
-                console.warn("No geolocation API.");
-                myLoc = { lat: 0, lng: 0 }; 
-                startGameplay(true);
+                showError("Your device or browser does not support GPS.");
                 return;
             }
+
+            // Show "Please click Allow" screen immediately
+            showView('view-locating');
 
             // Setup HUD text
             document.getElementById('hud-role-text').innerText = myRole;
@@ -243,22 +242,24 @@
                 ? "Physically patrol the area. Robbers only appear on radar when within 200m!" 
                 : "RUN! Cops are tracking you IRL. Stay out of their 30m catch radius!";
 
-            // Try to get location, but give it a short timeout so they don't get stuck looking at the "Locating" screen forever
+            // TIER 1: LOW ACCURACY (Triggers prompt instantly without freezing)
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    // Success!
+                    // They clicked Allow!
                     myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     updateLocationOnServer(myLoc.lat, myLoc.lng, myRole);
                     startGameplay(false);
                 },
                 (err) => {
-                    // Failed or took too long (user might have permissions acting weird)
-                    // Let them into the game anyway, show a warning, and wait for `watchPosition` to catch up!
-                    console.warn("Initial GPS fetch failed or timed out. Dropping into map anyway...", err);
-                    myLoc = { lat: 51.505, lng: -0.09 }; // Temporary default location (London)
-                    startGameplay(true); // true = show warning banner
+                    // They clicked Block or it failed completely
+                    if (err.code === 1) { // 1 = PERMISSION_DENIED
+                        showError("You blocked Location Access! You must go into your browser settings, allow location for this site, and reload to play.");
+                    } else {
+                        showError("Could not get your location. Please check your signal and ensure GPS is turned on.");
+                    }
+                    showView('view-intro');
                 },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // Only wait 5 seconds max before forcing entry
+                { enableHighAccuracy: false, timeout: 30000, maximumAge: Infinity } // False = Fast prompt!
             );
         };
 
@@ -269,16 +270,10 @@
             showView('view-intro');
         };
 
-        // --- 3. ACTIVE GAMEPLAY LOGIC ---
+        // --- 3. ACTIVE GAMEPLAY LOGIC (High Accuracy) ---
         const startGameplay = (isWaitingForGps) => {
             showView('view-playing');
             
-            if (isWaitingForGps) {
-                document.getElementById('gps-warning').classList.remove('hidden');
-            } else {
-                document.getElementById('gps-warning').classList.add('hidden');
-            }
-
             // Initialize Map
             if (!map) {
                 map = L.map('map', { zoomControl: false }).setView([myLoc.lat, myLoc.lng], 18);
@@ -289,7 +284,7 @@
                 map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
             }
 
-            // Start Continuous GPS Tracking
+            // TIER 2: HIGH ACCURACY (Tracking actual movement)
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
@@ -297,17 +292,15 @@
                         updateLocationOnServer(myLoc.lat, myLoc.lng);
                         map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
                         
-                        // Hide the warning banner once the phone finally gets a lock!
                         document.getElementById('gps-warning').classList.add('hidden');
-                        
                         checkCatchLogic(); 
                     },
                     (err) => {
                         console.warn("Watch position error/timeout:", err);
-                        // Don't kick them out, just show the warning banner
+                        // Show "Improving GPS Signal" banner if it temporarily loses track of them
                         document.getElementById('gps-warning').classList.remove('hidden');
                     },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 } // True = Track running!
                 );
             }
 
@@ -338,8 +331,7 @@
         };
 
         const checkCatchLogic = () => {
-            // Can't get caught if we don't have a real location yet
-            if (myRole !== 'robber' || isCaught || !myLoc || document.getElementById('gps-warning').classList.contains('hidden') === false) return;
+            if (myRole !== 'robber' || isCaught || !myLoc) return;
             
             const cops = Object.values(otherPlayers).filter(p => p.role === 'cop' && p.lat && p.lng);
             for (let cop of cops) {
