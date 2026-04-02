@@ -284,7 +284,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Swapped Firestore for Realtime Database
         import { getDatabase, ref, set, onValue, get, update, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         // ==========================================
@@ -305,6 +304,12 @@
         let db, auth, user = null;
         let currentRoom = null; 
         
+        // --- CRITICAL FIX FOR LOCAL/MULTI-TAB TESTING ---
+        // Creates a highly unique session ID per tab/app load. 
+        // Prevents identical `user.uid` from overwriting each other in the DB if playing on same connection/browser.
+        let mySessionId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+        let hasInitializedInDB = false;
+        
         let myRole = null; 
         let myLoc = { lat: 0, lng: 0 };
         let myPlayerNumber = null;
@@ -317,6 +322,10 @@
         let trailPolylines = {};
         let otherPlayers = {};
         let currentOnlineCount = 0;
+        
+        // Active RTDB listeners that must be cleared if room changes
+        let unsubPlayers = null;
+        let unsubBackup = null;
         
         // Target tracking for arrests and backup
         let targetArrestId = null;
@@ -358,7 +367,6 @@
             }, 3500);
         };
 
-        // Synthesize a generic radio/siren beep using Web Audio API
         const playRadioBeep = () => {
             if (!audioCtx) return;
             try {
@@ -462,7 +470,6 @@
         const joinGameSession = (roomCode) => {
             currentRoom = roomCode;
             
-            // Init Audio Context on user interaction
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -510,7 +517,8 @@
         const updateMyData = async () => {
             if (!user || !myRole || !currentRoom || isCaught) return;
             
-            const playerRef = ref(db, `rooms/${currentRoom}/players/${user.uid}`);
+            // Uses mySessionId to prevent local-tab overwrites!
+            const playerRef = ref(db, `rooms/${currentRoom}/players/${mySessionId}`);
             
             if (myRole === 'robber') {
                 const lastTrail = myTrail[myTrail.length - 1];
@@ -521,16 +529,29 @@
             }
 
             try {
-                await update(playerRef, {
-                    uid: user.uid,
-                    role: myRole,
-                    lat: myLoc.lat,
-                    lng: myLoc.lng,
-                    isCaught: isCaught,
-                    playerNumber: myPlayerNumber || null,
-                    trail: myRole === 'robber' ? myTrail : null,
-                    lastUpdate: Date.now()
-                });
+                if (!hasInitializedInDB) {
+                    // SET overrides fully - establishes player
+                    await set(playerRef, {
+                        sessionId: mySessionId,
+                        role: myRole,
+                        lat: myLoc.lat,
+                        lng: myLoc.lng,
+                        isCaught: isCaught,
+                        playerNumber: myPlayerNumber || null,
+                        trail: myRole === 'robber' ? myTrail : null,
+                        lastUpdate: Date.now()
+                    });
+                    hasInitializedInDB = true;
+                } else {
+                    // UPDATE prevents race conditions with arrests (so we don't accidentally write isCaught=false)
+                    const updates = {
+                        lat: myLoc.lat,
+                        lng: myLoc.lng,
+                        lastUpdate: Date.now()
+                    };
+                    if (myRole === 'robber') updates.trail = myTrail;
+                    await update(playerRef, updates);
+                }
             } catch (e) { console.error("Sync error", e); }
         };
 
@@ -548,8 +569,13 @@
         const startGPS = (pos) => {
             myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             
-            // Remove marker on closing app
-            const myPlayerRef = ref(db, `rooms/${currentRoom}/players/${user.uid}`);
+            // Clean up old listeners to prevent ghost behaviors if re-joining
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (unsubPlayers) unsubPlayers();
+            if (unsubBackup) unsubBackup();
+            
+            // Set up removal on app exit
+            const myPlayerRef = ref(db, `rooms/${currentRoom}/players/${mySessionId}`);
             onDisconnect(myPlayerRef).remove();
             
             updateMyData();
@@ -584,13 +610,13 @@
             }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
 
             // Listen to all active players in room
-            onValue(ref(db, `rooms/${currentRoom}/players`), (snapshot) => {
+            unsubPlayers = onValue(ref(db, `rooms/${currentRoom}/players`), (snapshot) => {
                 const playersData = snapshot.val() || {};
-                const activeUIDs = Object.keys(playersData);
+                const activeSessionIds = Object.keys(playersData);
                 
-                // Update counter visually if changed
-                if (currentOnlineCount !== activeUIDs.length) {
-                    currentOnlineCount = activeUIDs.length;
+                // Track online count via exact connected Session IDs
+                if (currentOnlineCount !== activeSessionIds.length) {
+                    currentOnlineCount = activeSessionIds.length;
                     const container = document.getElementById('hud-players-count-container');
                     document.getElementById('hud-players-count').innerText = currentOnlineCount;
                     container.classList.add('updating');
@@ -598,42 +624,43 @@
                 }
 
                 // Prune dead markers
-                Object.keys(otherPlayers).forEach(uid => {
-                    if (!activeUIDs.includes(uid)) {
-                        if (mapMarkers[uid]) { map.removeLayer(mapMarkers[uid]); delete mapMarkers[uid]; }
-                        if (trailPolylines[uid]) { map.removeLayer(trailPolylines[uid]); delete trailPolylines[uid]; }
-                        delete otherPlayers[uid];
+                Object.keys(otherPlayers).forEach(sid => {
+                    if (!activeSessionIds.includes(sid)) {
+                        if (mapMarkers[sid]) { map.removeLayer(mapMarkers[sid]); delete mapMarkers[sid]; }
+                        if (trailPolylines[sid]) { map.removeLayer(trailPolylines[sid]); delete trailPolylines[sid]; }
+                        delete otherPlayers[sid];
                     }
                 });
 
-                activeUIDs.forEach(uid => {
-                    const data = playersData[uid];
-                    if (uid === user.uid) {
+                activeSessionIds.forEach(sid => {
+                    const data = playersData[sid];
+                    if (sid === mySessionId) {
                         if (data.isCaught && !isCaught) { 
                             isCaught = true; 
                             showView('view-caught'); 
                         }
                     } else {
-                        otherPlayers[uid] = data;
+                        data.sessionId = sid; // Bind session id to object
+                        otherPlayers[sid] = data;
                     }
                 });
                 renderMarkers();
             });
 
             // Listen for backup requests
-            onValue(ref(db, `rooms/${currentRoom}/backupRequest`), (snapshot) => {
+            unsubBackup = onValue(ref(db, `rooms/${currentRoom}/backupRequest`), (snapshot) => {
                 const req = snapshot.val();
                 if (!req) return;
 
                 // 1. If I requested backup and someone accepted it
-                if (req.uid === user.uid && req.status === 'accepted' && req.timestamp === myBackupRequestTimestamp && !backupNotified) {
+                if (req.sessionId === mySessionId && req.status === 'accepted' && req.timestamp === myBackupRequestTimestamp && !backupNotified) {
                     backupNotified = true;
                     showNotification("A unit is en route to your location!", "success");
                     playRadioBeep();
                 }
 
                 // 2. If someone ELSE requested backup and it is pending
-                if (req.uid !== user.uid && req.timestamp > lastHandledBackupTime && myRole === 'cop' && req.status === 'pending') {
+                if (req.sessionId !== mySessionId && req.timestamp > lastHandledBackupTime && myRole === 'cop' && req.status === 'pending') {
                     lastHandledBackupTime = req.timestamp;
                     activeBackupTarget = { lat: req.lat, lng: req.lng };
                     showView('view-backup-request');
@@ -663,27 +690,27 @@
             });
             if (!mapMarkers['me']) { mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: myIcon, zIndexOffset: 1000 }).addTo(map); }
 
-            // Others (Render both teams so everyone can track each other accurately)
+            // Others
             Object.values(otherPlayers).forEach(p => {
+                const sid = p.sessionId;
                 if (p.isCaught) { 
-                    if (mapMarkers[p.uid]) { map.removeLayer(mapMarkers[p.uid]); delete mapMarkers[p.uid]; }
-                    if (trailPolylines[p.uid]) { map.removeLayer(trailPolylines[p.uid]); delete trailPolylines[p.uid]; }
+                    if (mapMarkers[sid]) { map.removeLayer(mapMarkers[sid]); delete mapMarkers[sid]; }
+                    if (trailPolylines[sid]) { map.removeLayer(trailPolylines[sid]); delete trailPolylines[sid]; }
                     return; 
                 }
                 
-                // Color coding dots so teams see their team vs enemies
                 const icon = L.divIcon({ 
                     html: `<div class="w-6 h-6 ${p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-lg"><div class="marker-label">${p.role === 'cop' ? 'COP' : 'SUSPECT'}</div></div>`, 
                     className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] 
                 });
                 
-                if (!mapMarkers[p.uid]) {
+                if (!mapMarkers[sid]) {
                     const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
                     m.on('click', () => {
                         if (myRole === 'cop' && p.role === 'robber') {
                             const dist = calculateDistanceBasic(myLoc.lat, myLoc.lng, p.lat, p.lng);
                             if (dist <= CATCH_RADIUS_METERS) { 
-                                targetArrestId = p.uid; 
+                                targetArrestId = sid; 
                                 targetArrestNumber = p.playerNumber; 
                                 showView('view-arrest-modal'); 
                             } else { 
@@ -691,18 +718,18 @@
                             }
                         }
                     });
-                    mapMarkers[p.uid] = m;
+                    mapMarkers[sid] = m;
                 } else {
-                    mapMarkers[p.uid].setLatLng([p.lat, p.lng]);
+                    mapMarkers[sid].setLatLng([p.lat, p.lng]);
                 }
                 
                 // Cop Robber trails
                 if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
                     const pts = p.trail.map(t => [t.lat, t.lng]);
-                    if (!trailPolylines[p.uid]) {
-                        trailPolylines[p.uid] = L.polyline(pts, { color: '#ef4444', weight: 3, opacity: 0.5, dashArray: '5, 10' }).addTo(map);
+                    if (!trailPolylines[sid]) {
+                        trailPolylines[sid] = L.polyline(pts, { color: '#ef4444', weight: 3, opacity: 0.5, dashArray: '5, 10' }).addTo(map);
                     } else {
-                        trailPolylines[p.uid].setLatLngs(pts);
+                        trailPolylines[sid].setLatLngs(pts);
                     }
                 }
             });
@@ -719,12 +746,12 @@
             
             try {
                 await set(ref(db, `rooms/${currentRoom}/backupRequest`), {
-                    uid: user.uid,
+                    sessionId: mySessionId,
                     lat: myLoc.lat,
                     lng: myLoc.lng,
                     timestamp: myBackupRequestTimestamp,
                     status: 'pending',
-                    responderUid: null
+                    responderSessionId: null
                 });
                 showNotification("Backup requested! Waiting for units.", "success");
             } catch(e) { showNotification("Error requesting backup", "error"); }
@@ -737,7 +764,7 @@
                 try {
                     await update(ref(db, `rooms/${currentRoom}/backupRequest`), {
                         status: 'accepted',
-                        responderUid: user.uid
+                        responderSessionId: mySessionId
                     });
                 } catch(e) { }
 
@@ -807,6 +834,7 @@
 
         const finalizeArrest = async () => {
             try {
+                // Target ID properly mapped to the exact player's unique session
                 await update(ref(db, `rooms/${currentRoom}/players/${targetArrestId}`), { isCaught: true });
                 showNotification("TARGET BUSTED!", "success");
                 resetArrestUI();
@@ -816,7 +844,7 @@
 
         window.addEventListener('beforeunload', () => { 
             if (user && currentRoom && !isCaught) {
-                remove(ref(db, `rooms/${currentRoom}/players/${user.uid}`)); 
+                remove(ref(db, `rooms/${currentRoom}/players/${mySessionId}`)); 
             }
         });
     </script>
