@@ -224,14 +224,30 @@
         let otherPlayers = {};
         let useHighAccuracy = true; 
         
+        // Arrest Variables
         let targetArrestId = null; 
         let targetArrestNumber = null;
 
+        // Backup Variables
         let activeBackupTarget = null; 
         let backupRouteLine = null;
         let lastHandledBackupTime = 0;
 
-        window.addEventListener('pagehide', () => {
+        // --- PERFECT OFFLINE CLEANUP ---
+        // Instantly mark as offline when minimizing or switching tabs
+        document.addEventListener('visibilitychange', () => {
+            if (currentUser && myRole) {
+                const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
+                if (document.visibilityState === 'hidden') {
+                    setDoc(playerDocRef, { offline: true }, { merge: true });
+                } else {
+                    setDoc(playerDocRef, { offline: false, lastActive: Date.now() }, { merge: true });
+                }
+            }
+        });
+        
+        // Failsafe for completely closing browser tab
+        window.addEventListener('beforeunload', () => {
             if (currentUser) {
                 const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
                 setDoc(playerDocRef, { offline: true }, { merge: true });
@@ -308,15 +324,15 @@
         const updateLocationOnServer = (lat, lng) => {
             if (!currentUser) return;
             
-            // Build trailing coordinates if Robber
+            // Build Tracking Trails safely
             if (myRole === 'robber') {
                 if (myTrail.length === 0) {
-                    myTrail.push({lat, lng});
+                    myTrail.push({lat: lat, lng: lng});
                 } else {
                     const lastPoint = myTrail[myTrail.length - 1];
-                    if (getDistance(lastPoint.lat, lastPoint.lng, lat, lng) > 5) {
-                        myTrail.push({lat, lng});
-                        if (myTrail.length > 40) myTrail.shift(); 
+                    if (getDistance(lastPoint.lat, lastPoint.lng, lat, lng) > 5) { // Log every 5 meters moved
+                        myTrail.push({lat: lat, lng: lng});
+                        if (myTrail.length > 50) myTrail.shift(); 
                     }
                 }
             }
@@ -417,10 +433,10 @@
 
             startTracking();
 
-            // HEARTBEAT: Ping server every 10 seconds so we don't vanish when standing still
+            // HEARTBEAT: Ping server every 10 seconds so we never vanish when standing still
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
-                if (currentUser && myLoc && !isCaught) {
+                if (currentUser && myLoc && !isCaught && document.visibilityState === 'visible') {
                     updateLocationOnServer(myLoc.lat, myLoc.lng);
                 }
             }, 10000);
@@ -436,17 +452,23 @@
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-                    // OFFLINE CLEANUP: If marked offline OR inactive for > 30 seconds, remove dot immediately
-                    if (data.offline || (data.lastActive && (now - data.lastActive > 30000))) return;
+                    // OFFLINE CLEANUP: If marked offline instantly remove them. 
+                    // Fallback timeout increased to 5 minutes to prevent clock-drift bugs.
+                    if (docSnap.id !== currentUser.uid) {
+                        if (data.offline === true) return; 
+                        if (data.lastActive && (now - data.lastActive > 5 * 60 * 1000)) return; 
+                    }
                     
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
+                    // Am I Caught?
                     if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
                         isCaught = true;
                         showView('view-caught');
                     }
 
+                    // BACKUP REQUEST LISTENER
                     if (myRole === 'cop' && docSnap.id !== currentUser.uid && data.needsBackup) {
                         if (data.needsBackup > lastHandledBackupTime && data.needsBackup > (now - 20000)) { 
                             lastHandledBackupTime = data.needsBackup;
@@ -483,12 +505,8 @@
                 (err) => {
                     if (useHighAccuracy) {
                         useHighAccuracy = false;
-                        const warnEl = document.getElementById('gps-warning');
-                        warnEl.classList.remove('hidden');
+                        document.getElementById('gps-warning').classList.remove('hidden');
                         startTracking(); 
-                    } else {
-                        const warnEl = document.getElementById('gps-warning');
-                        warnEl.classList.remove('hidden');
                     }
                 },
                 { enableHighAccuracy: useHighAccuracy, maximumAge: 5000, timeout: 10000 }
@@ -542,11 +560,14 @@
                     const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
                     mapMarkers[id] = marker;
 
-                    // ROBBER TRAIL RENDERING (Fixed Type Error)
-                    if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
-                        const latLngs = p.trail.map(coord => [coord.lat, coord.lng]);
-                        const trail = L.polyline(latLngs, { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '5, 8' }).addTo(map);
-                        trailPolylines[id] = trail;
+                    // SECURE TRAIL RENDERING
+                    if (myRole === 'cop' && p.role === 'robber' && p.trail && Array.isArray(p.trail) && p.trail.length > 1) {
+                        const validCoords = p.trail.filter(c => c && typeof c.lat === 'number' && typeof c.lng === 'number');
+                        if (validCoords.length > 1) {
+                            const latLngs = validCoords.map(c => [c.lat, c.lng]);
+                            const trail = L.polyline(latLngs, { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '5, 8' }).addTo(map);
+                            trailPolylines[id] = trail;
+                        }
                     }
 
                     marker.on('click', () => {
