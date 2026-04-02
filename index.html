@@ -58,6 +58,14 @@
             border: 1px solid rgba(255,255,255,0.2);
             pointer-events: none;
         }
+
+        .backup-pulse {
+            animation: backupPing 1s infinite alternate;
+        }
+        @keyframes backupPing {
+            from { transform: scale(1); filter: brightness(1); }
+            to { transform: scale(1.1); filter: brightness(1.5); }
+        }
     </style>
 </head>
 <body class="bg-neutral-900 text-white overflow-hidden font-sans select-none">
@@ -249,7 +257,27 @@
         let myTrail = [], isCaught = false, map = null, watchId = null, heartbeatInterval = null;
         let mapMarkers = {}, trailPolylines = {}, otherPlayers = {};
         let targetArrestId = null, targetArrestNumber = null, activeBackupTarget = null;
+        let lastHandledBackupTime = Date.now();
         let myRtdbRef = null;
+
+        // Sound Engine
+        const playBackupSound = () => {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.5);
+            } catch (e) { console.error("Audio error", e); }
+        };
 
         const showView = (id) => {
             ['view-intro', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught'].forEach(v => document.getElementById(v).classList.add('hidden'));
@@ -287,7 +315,6 @@
                 document.getElementById('auth-loading').classList.add('hidden');
                 document.getElementById('role-buttons').classList.remove('hidden');
                 myRtdbRef = rtdb.ref(`games/${SHARED_GAME_ID}/players/${user.uid}`);
-                // Ensure player is removed when they disconnect
                 myRtdbRef.onDisconnect().remove();
             }
         });
@@ -332,6 +359,7 @@
             myRole = selectedRole;
             isCaught = false;
             myTrail = [];
+            lastHandledBackupTime = Date.now();
             showView('view-locating');
 
             if (myRole === 'robber') {
@@ -350,7 +378,6 @@
                 ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> <span class="text-blue-300">Tap Robber within 30m to arrest!</span>`
                 : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> <span class="text-red-300">Cops are searching for you! RUN!</span>`;
 
-            // Initial GPS check
             if (!navigator.geolocation) {
                 startGameplay({ coords: { latitude: 51.505, longitude: -0.09 } });
             } else {
@@ -384,7 +411,6 @@
                 );
             }
 
-            // Real-time Player Listener
             rtdb.ref(`games/${SHARED_GAME_ID}/players`).on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 otherPlayers = {};
@@ -393,7 +419,6 @@
                 const now = Date.now();
                 Object.keys(data).forEach(id => {
                     const p = data[id];
-                    // Skip players who haven't updated for 30 seconds
                     if (!p || (now - p.timestamp > 30000)) return;
 
                     if (id === currentUser.uid) {
@@ -403,6 +428,14 @@
                         }
                         count++;
                         return;
+                    }
+
+                    // Backup detection for Cops
+                    if (myRole === 'cop' && p.role === 'cop' && p.needsBackup && p.needsBackup > lastHandledBackupTime) {
+                        lastHandledBackupTime = p.needsBackup;
+                        activeBackupTarget = { lat: p.lat, lng: p.lng };
+                        document.getElementById('view-backup-request').classList.remove('hidden');
+                        playBackupSound();
                     }
 
                     otherPlayers[id] = p;
@@ -415,7 +448,6 @@
         };
 
         const renderMapMarkers = () => {
-            // Cleanup markers that are no longer present
             const currentIds = Object.keys(otherPlayers);
             Object.keys(mapMarkers).forEach(id => {
                 if (id !== 'me' && id !== 'my_circle' && !currentIds.includes(id)) {
@@ -428,7 +460,6 @@
                 }
             });
 
-            // My Marker
             if (myLoc && myRole) {
                 const colorClass = myRole === 'cop' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,1)]';
                 const shapeClass = myRole === 'cop' ? 'rounded-sm' : 'rounded-full';
@@ -454,7 +485,6 @@
                 }
             }
 
-            // Other Players
             Object.entries(otherPlayers).forEach(([id, p]) => {
                 if (!p.lat || !p.lng || p.isCaught) {
                     if (mapMarkers[id]) {
@@ -469,8 +499,12 @@
                 const colorClass = p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500';
                 const shapeClass = p.role === 'cop' ? 'rounded-sm' : 'rounded-full';
                 
+                // Add pulse if this cop requested backup recently
+                const isBackingUp = (p.needsBackup && (Date.now() - p.needsBackup < 15000));
+                const pulseClass = isBackingUp ? 'backup-pulse' : '';
+
                 const iconHtml = `
-                    <div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center">
+                    <div class="relative w-5 h-5 ${colorClass} ${shapeClass} ${pulseClass} border-2 border-white flex items-center justify-center">
                         <div class="marker-label ${isTeammate ? 'text-green-400' : 'text-white'}">
                             ${isTeammate ? '[TEAM] ' : ''}${roleLabel}
                         </div>
@@ -498,7 +532,6 @@
                     mapMarkers[id].setIcon(customIcon);
                 }
 
-                // Render trails for robbers (visible to Cops)
                 if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
                     const coords = p.trail.map(c => [c.lat, c.lng]);
                     if (!trailPolylines[id]) {
@@ -509,6 +542,14 @@
                 }
             });
         };
+
+        // UI Event Listeners
+        document.getElementById('btn-accept-backup').addEventListener('click', () => {
+            if (activeBackupTarget && map) {
+                map.setView([activeBackupTarget.lat, activeBackupTarget.lng], 19);
+                document.getElementById('view-backup-request').classList.add('hidden');
+            }
+        });
 
         document.getElementById('camera-input').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
@@ -544,16 +585,14 @@
             document.getElementById('ocr-loading').classList.add('flex');
             
             try {
-                // Perform OCR on the captured ID photo
                 const result = await Tesseract.recognize(document.getElementById('camera-preview').src, 'eng');
                 const scannedText = result.data.text.toLowerCase();
                 
-                // Check if the robber's ID number is present in the scanned text
                 if (scannedText.includes(targetArrestNumber.toString())) {
                     rtdb.ref(`games/${SHARED_GAME_ID}/players/${targetArrestId}`).update({ isCaught: true });
                     alert(`✅ POSITIVE IDENTIFICATION! ID ${targetArrestNumber} apprehended.`);
                 } else {
-                    alert(`❌ ID MISMATCH! The scanner read: "${scannedText}". Expected: ${targetArrestNumber}.`);
+                    alert(`❌ ID MISMATCH! Expected: ${targetArrestNumber}. Scan again.`);
                 }
             } catch (err) { 
                 console.error(err);
@@ -575,7 +614,6 @@
             }, 5000);
         };
 
-        // Visibility handling to keep connection alive or set offline status
         document.addEventListener('visibilitychange', () => {
             if (currentUser && myRole && myRtdbRef) {
                 if (document.visibilityState === 'hidden') {
@@ -583,7 +621,6 @@
                 }
             }
         });
-
     </script>
 </body>
 </html>
