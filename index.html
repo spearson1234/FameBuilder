@@ -6,16 +6,16 @@
     <title>Catch & Flee IRL</title>
     
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
     
     <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
     <!-- Tesseract JS (OCR Scanner) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" crossorigin="anonymous"></script>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (Compat version to include RTDB, Firestore, and Auth) -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
@@ -177,7 +177,7 @@
         </h2>
         <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
         
-        <button id="open-cam-btn" onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-lg mb-6 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+        <button id="open-cam-btn" onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-lg mb-6 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.3)] active:scale-95 transition-transform">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             OPEN CAMERA
         </button>
@@ -189,7 +189,7 @@
             <p class="text-blue-400 font-bold tracking-widest text-sm animate-pulse">AI SCANNING ID...</p>
         </div>
         
-        <button id="confirm-arrest-btn" class="hidden bg-blue-600 text-white px-10 py-5 rounded-full font-black text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(59,130,246,0.6)]" onclick="submitArrest()">
+        <button id="confirm-arrest-btn" class="hidden bg-blue-600 text-white px-10 py-5 rounded-full font-black text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-95 transition-transform" onclick="submitArrest()">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg>
             SCAN & ARREST
         </button>
@@ -215,7 +215,7 @@
         </p>
     </div>
 
-    <script type="module">
+    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
             authDomain: "login-71866.firebaseapp.com",
@@ -247,8 +247,10 @@
         };
 
         const showError = (msg) => {
-            document.getElementById('error-msg-text').innerHTML += `<br>• ${msg}`;
-            document.getElementById('error-msg').classList.remove('hidden');
+            const errEl = document.getElementById('error-msg');
+            const errText = document.getElementById('error-msg-text');
+            errText.innerHTML += `<div>${msg}</div>`;
+            errEl.classList.remove('hidden');
         };
 
         // TRACK SERVER CONNECTION HEALTH
@@ -266,8 +268,14 @@
         });
 
         const initAuth = async () => {
-            try { await auth.signInAnonymously(); } 
-            catch (err) { showError(`AUTH FAILED: ${err.message}`); }
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try { await auth.signInWithCustomToken(__initial_auth_token); } 
+                    catch(e) { await auth.signInAnonymously(); }
+                } else {
+                    await auth.signInAnonymously();
+                }
+            } catch (err) { showError(`AUTH FAILED: ${err.message}`); }
         };
         initAuth();
 
@@ -277,7 +285,7 @@
                 document.getElementById('auth-loading').classList.add('hidden');
                 document.getElementById('role-buttons').classList.remove('hidden');
                 myRtdbRef = rtdb.ref(`games/${SHARED_GAME_ID}/players/${user.uid}`);
-                myRtdbRef.onDisconnect().remove(); 
+                myRtdbRef.onDisconnect().remove().catch(()=>console.warn("RTDB Disconnect Setup failed")); 
             }
         });
 
@@ -296,7 +304,7 @@
             myRtdbRef.set({ 
                 role: myRole, lat: lat, lng: lng, isCaught: isCaught,
                 playerNumber: myPlayerNumber || null, trail: myRole === 'robber' ? myTrail : null
-            }).catch(err => showError(`DB WRITE FAILED: ${err.message}`));
+            }).catch(err => console.warn(`DB Write Warning: ${err.message}`));
         };
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -357,7 +365,9 @@
 
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
-                if (currentUser && myLoc && !isCaught && document.visibilityState === 'visible') updateLocationOnServer(myLoc.lat, myLoc.lng);
+                try {
+                    if (currentUser && myLoc && !isCaught && document.visibilityState === 'visible') updateLocationOnServer(myLoc.lat, myLoc.lng);
+                } catch(e) {}
             }, 10000);
 
             rtdb.ref(`games/${SHARED_GAME_ID}/players`).on('value', (snapshot) => {
@@ -407,7 +417,7 @@
             }
 
             Object.entries(otherPlayers).forEach(([id, p]) => {
-                if (!p.lat || !p.lng || p.isCaught) return;
+                if (!p.lat || !p.lng || p.isCaught || p.offline) return;
                 const isCop = p.role === 'cop';
                 
                 const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
@@ -473,8 +483,8 @@
             try {
                 const result = await Tesseract.recognize(document.getElementById('camera-preview').src, 'eng');
                 if (result.data.text.includes(targetArrestNumber.toString())) {
-                    rtdb.ref(`games/${SHARED_GAME_ID}/players/${targetArrestId}`).update({ isCaught: true });
-                    db.collection('arrest_logs').add({ copId: currentUser.uid, robberId: targetArrestId, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                    rtdb.ref(`games/${SHARED_GAME_ID}/players/${targetArrestId}`).update({ isCaught: true }).catch(e=>console.warn(e));
+                    db.collection('arrest_logs').add({ copId: currentUser.uid, robberId: targetArrestId, timestamp: firebase.firestore.FieldValue.serverTimestamp() }).catch(e=>console.warn(e));
                     alert(`✅ Arrest Confirmed! Scanned ID: ${targetArrestNumber}`);
                 } else alert(`❌ ARREST FAILED! Could not read ID [${targetArrestNumber}].`);
             } catch (err) { alert("Scanner Error."); }
@@ -483,7 +493,7 @@
 
         window.callBackup = () => {
             if (myRole !== 'cop' || !currentUser) return;
-            rtdb.ref(`games/${SHARED_GAME_ID}/players/${currentUser.uid}`).update({ needsBackup: Date.now() });
+            rtdb.ref(`games/${SHARED_GAME_ID}/players/${currentUser.uid}`).update({ needsBackup: Date.now() }).catch(e=>console.warn(e));
             const btn = document.getElementById('cop-backup-display').querySelector('button');
             const originalHTML = btn.innerHTML;
             btn.innerHTML = `<span class="text-[9px] uppercase tracking-widest font-black mt-1">DISPATCHED</span>`;
@@ -495,10 +505,12 @@
         };
 
         document.addEventListener('visibilitychange', () => {
-            if (currentUser && myRole && myRtdbRef) {
-                if (document.visibilityState === 'hidden') myRtdbRef.set({ offline: true }, { merge: true });
-                else myRtdbRef.set({ offline: false, lastActive: Date.now() }, { merge: true });
-            }
+            try {
+                if (currentUser && myRole && myRtdbRef) {
+                    if (document.visibilityState === 'hidden') myRtdbRef.update({ offline: true }).catch(e=>console.warn(e));
+                    else myRtdbRef.update({ offline: false, lastActive: Date.now() }).catch(e=>console.warn(e));
+                }
+            } catch(e) {}
         });
     </script>
 </body>
