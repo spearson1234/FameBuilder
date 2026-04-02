@@ -22,7 +22,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Tesseract -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- Firebase -->
+    <!-- Firebase (Compat versions for simple integration) -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
@@ -42,12 +42,28 @@
         @keyframes runBounce { 0% { transform: translateY(0px) scaleY(0.95); } 100% { transform: translateY(-25px) scaleY(1.05); } }
         @keyframes legSwing1 { 0% { transform: rotate(30deg) translateY(0px); } 100% { transform: rotate(-50deg) translateY(-10px); } }
         @keyframes legSwing2 { 0% { transform: rotate(-50deg) translateY(-10px); } 100% { transform: rotate(30deg) translateY(0px); } }
+        
+        .marker-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="bg-neutral-900 text-white overflow-hidden font-sans select-none">
 
     <!-- SERVER STATUS -->
-    <div id="server-status" class="absolute top-0 left-0 w-full bg-neutral-800 text-white text-[10px] font-black text-center py-2 z-50 uppercase tracking-widest flex items-center justify-center gap-2">
+    <div id="server-status" class="absolute top-0 left-0 w-full bg-neutral-800 text-white text-[10px] font-black text-center py-2 z-[60] uppercase tracking-widest flex items-center justify-center gap-2">
         <svg class="animate-spin h-3 w-3 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
         CONNECTING TO FIREBASE...
     </div>
@@ -78,11 +94,11 @@
             </div>
           
             <div id="role-buttons" class="hidden w-full flex flex-col gap-4 justify-center max-w-xs mx-auto">
-                <button onclick="joinGame('cop')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3">
+                <button onclick="joinGame('cop')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-colors">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     PLAY AS COP
                 </button>
-                <button onclick="joinGame('robber')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3">
+                <button onclick="joinGame('robber')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-colors">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                     PLAY AS ROBBER
                 </button>
@@ -98,7 +114,7 @@
 
     <!-- VIEW: ACTIVE MAP -->
     <div id="view-playing" class="hidden absolute inset-0 z-10 pt-6">
-        <div id="map" class="absolute inset-0 z-0"></div>
+        <div id="map" class="absolute inset-0 z-0 bg-neutral-900"></div>
         <div id="gps-warning" class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-4 py-2 rounded-full text-xs font-black z-20 animate-pulse shadow-2xl flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             INDOOR MODE
@@ -202,15 +218,15 @@
         <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl max-w-xs shadow-2xl">
             <p class="text-gray-300 text-sm">A Cop photographed your ID and arrested you. Wait for the next round!</p>
         </div>
-        <p class="text-neutral-600 text-[10px] mt-12 uppercase tracking-widest font-bold flex items-center gap-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            Refresh to leave
-        </p>
+        <button onclick="location.reload()" class="mt-12 bg-white text-black font-black py-4 px-8 rounded-full uppercase tracking-widest text-sm flex items-center gap-2 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Restart Game
+        </button>
     </div>
 
     <script type="module">
         // ================================================
-        // FIREBASE CONFIG — EXACTLY AS YOU PROVIDED
+        // FIREBASE CONFIG
         // ================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
@@ -222,11 +238,10 @@
             appId: "1:434042354282:web:fbc98eaefe2ef6513a2813"
         };
 
-        const SHARED_GAME_ID = "main_server";
+        const SHARED_GAME_ID = "main_server_v2"; // Unique version key
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        const db = firebase.firestore();
         const rtdb = firebase.database();
         const CATCH_RADIUS_METERS = 30;
 
@@ -234,8 +249,7 @@
         let myTrail = [], isCaught = false, map = null, watchId = null, heartbeatInterval = null;
         let mapMarkers = {}, trailPolylines = {}, otherPlayers = {};
         let targetArrestId = null, targetArrestNumber = null, activeBackupTarget = null;
-        let backupRouteLine = null, lastHandledBackupTime = 0, myRtdbRef = null;
-        let useHighAccuracy = true;
+        let myRtdbRef = null;
 
         const showView = (id) => {
             ['view-intro', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught'].forEach(v => document.getElementById(v).classList.add('hidden'));
@@ -247,27 +261,23 @@
             document.getElementById('error-msg').classList.remove('hidden');
         };
 
-        // Firebase connection status
+        // Firebase connection status UI
         rtdb.ref(".info/connected").on("value", (snap) => {
             const statusEl = document.getElementById('server-status');
             if (snap.val() === true) {
-                statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-300"><polyline points="20 6 9 17 4 12"></polyline></svg> DATABASE CONNECTED</div>`;
-                statusEl.className = "absolute top-0 left-0 w-full bg-green-600 text-white text-[10px] font-black py-2 z-50 uppercase tracking-widest transition-all";
+                statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-300"><polyline points="20 6 9 17 4 12"></polyline></svg> LIVE: ${SHARED_GAME_ID}</div>`;
+                statusEl.className = "absolute top-0 left-0 w-full bg-green-600 text-white text-[10px] font-black py-2 z-[60] uppercase tracking-widest transition-all";
                 setTimeout(() => statusEl.classList.add('hidden'), 3000);
             } else {
-                statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-red-300"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> DISCONNECTED FROM FIREBASE</div>`;
-                statusEl.className = "absolute top-0 left-0 w-full bg-red-600 text-white text-[10px] font-black py-2 z-50 uppercase tracking-widest transition-all";
+                statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-red-300"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> CONNECTING...</div>`;
+                statusEl.className = "absolute top-0 left-0 w-full bg-red-600 text-white text-[10px] font-black py-2 z-[60] uppercase tracking-widest transition-all";
                 statusEl.classList.remove('hidden');
             }
         });
 
         const initAuth = async () => {
-            try { 
-                await auth.signInAnonymously(); 
-            }
-            catch (err) { 
-                showError(`AUTH FAILED: ${err.message}`); 
-            }
+            try { await auth.signInAnonymously(); }
+            catch (err) { showError(`AUTH FAILED: ${err.message}`); }
         };
         initAuth();
 
@@ -277,12 +287,14 @@
                 document.getElementById('auth-loading').classList.add('hidden');
                 document.getElementById('role-buttons').classList.remove('hidden');
                 myRtdbRef = rtdb.ref(`games/${SHARED_GAME_ID}/players/${user.uid}`);
+                // Ensure player is removed when they disconnect
                 myRtdbRef.onDisconnect().remove();
             }
         });
 
         const updateLocationOnServer = (lat, lng) => {
             if (!currentUser || !myRtdbRef) return;
+            
             if (myRole === 'robber') {
                 if (myTrail.length === 0) myTrail.push({lat, lng});
                 else {
@@ -293,7 +305,8 @@
                     }
                 }
             }
-            myRtdbRef.set({
+
+            myRtdbRef.update({
                 role: myRole,
                 lat: lat,
                 lng: lng,
@@ -301,7 +314,7 @@
                 playerNumber: myPlayerNumber || null,
                 trail: myRole === 'robber' ? myTrail : null,
                 timestamp: Date.now()
-            }).catch(err => showError(`DB WRITE FAILED: ${err.message}`));
+            }).catch(err => console.error(`Sync error: ${err.message}`));
         };
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -337,40 +350,33 @@
                 ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> <span class="text-blue-300">Tap Robber within 30m to arrest!</span>`
                 : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> <span class="text-red-300">Cops are searching for you! RUN!</span>`;
 
-            const loadSim = () => {
-                myLoc = { lat: 51.505 + (Math.random()-0.5)*0.002, lng: -0.09 + (Math.random()-0.5)*0.002 };
-                updateLocationOnServer(myLoc.lat, myLoc.lng);
-                startGameplay();
-            };
-
-            if (!navigator.geolocation) return loadSim();
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    updateLocationOnServer(myLoc.lat, myLoc.lng);
-                    startGameplay();
-                },
-                (err) => loadSim(),
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
+            // Initial GPS check
+            if (!navigator.geolocation) {
+                startGameplay({ coords: { latitude: 51.505, longitude: -0.09 } });
+            } else {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => startGameplay(pos),
+                    () => startGameplay({ coords: { latitude: 51.505, longitude: -0.09 } }),
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            }
         };
 
-        const startGameplay = () => {
+        const startGameplay = (pos) => {
+            myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            updateLocationOnServer(myLoc.lat, myLoc.lng);
             showView('view-playing');
+            
             if (!map) {
                 map = L.map('map', { zoomControl: false, attributionControl: false }).setView([myLoc.lat, myLoc.lng], 18);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
-            } else {
-                map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
             }
 
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    (p) => {
+                        myLoc = { lat: p.coords.latitude, lng: p.coords.longitude };
                         updateLocationOnServer(myLoc.lat, myLoc.lng);
-                        map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
                         document.getElementById('gps-warning').classList.add('hidden');
                     },
                     () => { document.getElementById('gps-warning').classList.remove('hidden'); },
@@ -378,22 +384,17 @@
                 );
             }
 
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(() => {
-                if (currentUser && myLoc && !isCaught && document.visibilityState === 'visible') {
-                    updateLocationOnServer(myLoc.lat, myLoc.lng);
-                }
-            }, 4000);
-
-            // Listen to the main server
+            // Real-time Player Listener
             rtdb.ref(`games/${SHARED_GAME_ID}/players`).on('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 otherPlayers = {};
                 let count = 0;
 
+                const now = Date.now();
                 Object.keys(data).forEach(id => {
                     const p = data[id];
-                    if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
+                    // Skip players who haven't updated for 30 seconds
+                    if (!p || (now - p.timestamp > 30000)) return;
 
                     if (id === currentUser.uid) {
                         if (p.isCaught && !isCaught && myRole === 'robber') {
@@ -410,56 +411,102 @@
 
                 document.getElementById('hud-players-count').innerText = count;
                 renderMapMarkers();
-            }, (err) => showError(`DB READ FAILED: ${err.message}`));
+            });
         };
 
         const renderMapMarkers = () => {
-            Object.values(mapMarkers).forEach(m => map.removeLayer(m)); mapMarkers = {};
-            Object.values(trailPolylines).forEach(l => map.removeLayer(l)); trailPolylines = {};
-            if (backupRouteLine) { map.removeLayer(backupRouteLine); backupRouteLine = null; }
+            // Cleanup markers that are no longer present
+            const currentIds = Object.keys(otherPlayers);
+            Object.keys(mapMarkers).forEach(id => {
+                if (id !== 'me' && id !== 'my_circle' && !currentIds.includes(id)) {
+                    map.removeLayer(mapMarkers[id]);
+                    delete mapMarkers[id];
+                    if (trailPolylines[id]) {
+                        map.removeLayer(trailPolylines[id]);
+                        delete trailPolylines[id];
+                    }
+                }
+            });
 
+            // My Marker
             if (myLoc && myRole) {
                 const colorClass = myRole === 'cop' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,1)]';
                 const shapeClass = myRole === 'cop' ? 'rounded-sm' : 'rounded-full';
-                const iconHtml = `<div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50 pointer-events-auto"><div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-50"></div></div>`;
+                const iconHtml = `
+                    <div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50">
+                        <div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-50"></div>
+                        <div class="marker-label">YOU</div>
+                    </div>`;
                 const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
-                mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: customIcon, interactive: false, zIndexOffset: 1000 }).addTo(map);
+                
+                if (!mapMarkers['me']) {
+                    mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
+                } else {
+                    mapMarkers['me'].setLatLng([myLoc.lat, myLoc.lng]);
+                }
+
                 if (myRole === 'cop') {
-                    mapMarkers['my_circle'] = L.circle([myLoc.lat, myLoc.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: CATCH_RADIUS_METERS, interactive: false }).addTo(map);
+                    if (!mapMarkers['my_circle']) {
+                        mapMarkers['my_circle'] = L.circle([myLoc.lat, myLoc.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: CATCH_RADIUS_METERS }).addTo(map);
+                    } else {
+                        mapMarkers['my_circle'].setLatLng([myLoc.lat, myLoc.lng]);
+                    }
                 }
             }
 
+            // Other Players
             Object.entries(otherPlayers).forEach(([id, p]) => {
-                if (!p.lat || !p.lng || p.isCaught) return;
-
-                const isCop = p.role === 'cop';
-                const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
-                const shapeClass = isCop ? 'rounded-sm' : 'rounded-full';
-                const iconHtml = `<div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50 pointer-events-auto"></div>`;
-                const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
-
-                const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
-                mapMarkers[id] = marker;
-
-                if (myRole === 'cop' && p.role === 'robber' && p.trail && Array.isArray(p.trail) && p.trail.length > 1) {
-                    const validCoords = p.trail.filter(c => c && typeof c.lat === 'number' && typeof c.lng === 'number');
-                    if (validCoords.length > 1) {
-                        trailPolylines[id] = L.polyline(validCoords.map(c => [c.lat, c.lng]), { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '5, 8' }).addTo(map);
+                if (!p.lat || !p.lng || p.isCaught) {
+                    if (mapMarkers[id]) {
+                        map.removeLayer(mapMarkers[id]);
+                        delete mapMarkers[id];
                     }
+                    return;
                 }
 
-                marker.on('click', () => {
-                    if (myRole === 'cop' && p.role === 'robber') {
-                        const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
-                        if (dist <= CATCH_RADIUS_METERS) {
-                            targetArrestId = id;
-                            targetArrestNumber = p.playerNumber;
-                            showView('view-arrest-modal');
-                        } else {
-                            alert(`Get closer! You are ${Math.round(dist)}m away.`);
+                const isTeammate = p.role === myRole;
+                const roleLabel = p.role === 'cop' ? 'COP' : `ID: ${p.playerNumber || '???'}`;
+                const colorClass = p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500';
+                const shapeClass = p.role === 'cop' ? 'rounded-sm' : 'rounded-full';
+                
+                const iconHtml = `
+                    <div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center">
+                        <div class="marker-label ${isTeammate ? 'text-green-400' : 'text-white'}">
+                            ${isTeammate ? '[TEAM] ' : ''}${roleLabel}
+                        </div>
+                    </div>`;
+                
+                const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
+
+                if (!mapMarkers[id]) {
+                    const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
+                    marker.on('click', () => {
+                        if (myRole === 'cop' && p.role === 'robber') {
+                            const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                            if (dist <= CATCH_RADIUS_METERS) {
+                                targetArrestId = id;
+                                targetArrestNumber = p.playerNumber;
+                                showView('view-arrest-modal');
+                            } else {
+                                alert(`Target is too far (${Math.round(dist)}m). Get within ${CATCH_RADIUS_METERS}m.`);
+                            }
                         }
+                    });
+                    mapMarkers[id] = marker;
+                } else {
+                    mapMarkers[id].setLatLng([p.lat, p.lng]);
+                    mapMarkers[id].setIcon(customIcon);
+                }
+
+                // Render trails for robbers (visible to Cops)
+                if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
+                    const coords = p.trail.map(c => [c.lat, c.lng]);
+                    if (!trailPolylines[id]) {
+                        trailPolylines[id] = L.polyline(coords, { color: '#ef4444', weight: 3, opacity: 0.5, dashArray: '5, 10' }).addTo(map);
+                    } else {
+                        trailPolylines[id].setLatLngs(coords);
                     }
-                });
+                }
             });
         };
 
@@ -495,15 +542,23 @@
             document.getElementById('confirm-arrest-btn').classList.remove('flex');
             document.getElementById('ocr-loading').classList.remove('hidden');
             document.getElementById('ocr-loading').classList.add('flex');
+            
             try {
+                // Perform OCR on the captured ID photo
                 const result = await Tesseract.recognize(document.getElementById('camera-preview').src, 'eng');
-                if (result.data.text.includes(targetArrestNumber.toString())) {
+                const scannedText = result.data.text.toLowerCase();
+                
+                // Check if the robber's ID number is present in the scanned text
+                if (scannedText.includes(targetArrestNumber.toString())) {
                     rtdb.ref(`games/${SHARED_GAME_ID}/players/${targetArrestId}`).update({ isCaught: true });
-                    alert(`✅ Arrest Confirmed! Scanned ID: ${targetArrestNumber}`);
+                    alert(`✅ POSITIVE IDENTIFICATION! ID ${targetArrestNumber} apprehended.`);
                 } else {
-                    alert(`❌ ARREST FAILED! Could not read ID [${targetArrestNumber}].`);
+                    alert(`❌ ID MISMATCH! The scanner read: "${scannedText}". Expected: ${targetArrestNumber}.`);
                 }
-            } catch (err) { alert("Scanner Error."); }
+            } catch (err) { 
+                console.error(err);
+                alert("Scanner processing error."); 
+            }
             closeArrestModal();
         };
 
@@ -517,18 +572,18 @@
             setTimeout(() => {
                 btn.classList.replace('bg-green-600', 'bg-blue-600');
                 btn.innerHTML = originalHTML;
-            }, 3000);
+            }, 5000);
         };
 
+        // Visibility handling to keep connection alive or set offline status
         document.addEventListener('visibilitychange', () => {
             if (currentUser && myRole && myRtdbRef) {
                 if (document.visibilityState === 'hidden') {
-                    myRtdbRef.set({ offline: true }, { merge: true });
-                } else {
-                    myRtdbRef.set({ offline: false, lastActive: Date.now() }, { merge: true });
+                    myRtdbRef.update({ lastActive: Date.now() });
                 }
             }
         });
+
     </script>
 </body>
 </html>
