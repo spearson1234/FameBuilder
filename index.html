@@ -13,7 +13,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* 3D Dice Animations & Styles */
         .cube-wrapper { perspective: 1000px; width: 80px; height: 80px; margin-bottom: 30px; animation: runBounce 0.4s infinite alternate ease-in-out; z-index: 10; margin-left: auto; margin-right: auto; }
         .cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: spin3D 5s infinite linear; }
         .face { position: absolute; width: 80px; height: 80px; background: linear-gradient(135deg, #2a2a2a, #0a0a0a); border: 2px solid #555; border-radius: 12px; box-shadow: inset 0 0 15px rgba(0,0,0,0.9); }
@@ -27,7 +26,6 @@
         @keyframes legSwing1 { 0% { transform: rotate(30deg) translateY(0px); } 100% { transform: rotate(-50deg) translateY(-10px); } }
         @keyframes legSwing2 { 0% { transform: rotate(-50deg) translateY(-10px); } 100% { transform: rotate(30deg) translateY(0px); } }
         
-        /* Map Custom Icon Overrides */
         .custom-leaflet-icon { background: transparent; border: none; }
     </style>
 </head>
@@ -41,7 +39,6 @@
         </div>
         
         <div class="z-10 flex flex-col items-center max-w-lg w-full px-6 text-center">
-            <!-- 3D Dice Logo -->
             <div class="relative w-48 h-56 flex flex-col items-center justify-end mb-4">
                 <div class="cube-wrapper">
                     <div class="cube">
@@ -61,8 +58,7 @@
 
             <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
             
-            <p class="text-gray-400 mb-2 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
-            <p class="text-gray-500 mb-8 text-sm">📍 Works outdoors & indoors!</p>
+            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
             
             <div id="error-msg" class="hidden bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium shadow-lg max-w-sm"></div>
 
@@ -99,6 +95,13 @@
                         <span id="hud-role-text" class="font-black text-2xl uppercase text-white">ROLE</span>
                     </div>
                 </div>
+                
+                <!-- ROBBER ID DISPLAY -->
+                <div id="robber-id-display" class="hidden bg-red-900/90 border-2 border-red-500 p-3 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.6)] pointer-events-auto text-center ml-2">
+                    <div class="text-[10px] text-red-200 uppercase tracking-widest font-bold mb-0 leading-none">YOUR ID NUMBER</div>
+                    <div class="font-black text-white text-3xl tracking-widest" id="my-robber-number">0000</div>
+                </div>
+
                 <div class="bg-black/70 backdrop-blur-md border border-neutral-700 p-3 rounded-2xl shadow-xl pointer-events-auto text-right">
                     <div class="text-xs text-gray-400 uppercase tracking-widest font-bold">Online</div>
                     <div class="font-bold text-white text-lg"><span id="hud-players-count">1</span> Players</div>
@@ -114,11 +117,35 @@
         </div>
     </div>
 
-    <!-- VIEW: CAUGHT -->
-    <div id="view-caught" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
-        <h2 class="text-7xl font-black text-red-500 mb-4 animate-bounce tracking-tighter">BUSTED!</h2>
-        <p class="text-gray-300 mb-8 text-lg max-w-xs">A cop got within 30 meters of your location!</p>
-        <button onclick="returnToMenu()" class="bg-white text-black font-black text-xl py-4 px-12 rounded-full active:bg-gray-300 transition-colors shadow-[0_0_40px_rgba(255,255,255,0.4)]">MAIN MENU</button>
+    <!-- VIEW: ARREST MODAL (For Cops) -->
+    <div id="view-arrest-modal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+        <h2 class="text-4xl text-blue-400 font-black mb-2 animate-pulse">ARREST ROBBER</h2>
+        <p class="text-gray-300 mb-6 text-lg max-w-xs">Take a photo of the Robber's screen showing their 4-digit ID number to lock them up!</p>
+        
+        <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
+        
+        <button onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-xl mb-6 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95 transition-transform">
+            📸 OPEN CAMERA
+        </button>
+        
+        <img id="camera-preview" class="hidden w-64 h-64 object-cover rounded-2xl mb-6 border-4 border-blue-500 shadow-2xl" />
+        
+        <button id="confirm-arrest-btn" class="hidden bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-full font-black text-2xl shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-95 transition-transform" onclick="submitArrest()">
+            🚨 CONFIRM ARREST 🚨
+        </button>
+        
+        <button onclick="closeArrestModal()" class="mt-8 text-gray-500 font-bold underline p-4 uppercase tracking-widest">Cancel / Go Back</button>
+    </div>
+
+    <!-- VIEW: CAUGHT / JAIL -->
+    <div id="view-caught" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md border-8 border-neutral-800">
+        <div class="text-8xl mb-4 animate-bounce">🍬🔒</div>
+        <h2 class="text-6xl font-black text-red-500 mb-2 tracking-tighter">CAUGHT!</h2>
+        <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl mt-4">
+            <p class="text-white font-bold text-xl mb-2">You are locked up.</p>
+            <p class="text-gray-400 text-sm max-w-xs">A Cop photographed your ID and arrested you. You cannot play until the next round starts.</p>
+        </div>
+        <p class="text-neutral-600 text-xs mt-12">(Refresh the page to leave the game)</p>
     </div>
 
 
@@ -148,23 +175,25 @@
         const db = getFirestore(app);
 
         // --- GAME VARIABLES ---
-        const CATCH_RADIUS_METERS = 30; // 30 meters allows for some indoor GPS drift
+        const CATCH_RADIUS_METERS = 30; 
         const COP_RADAR_METERS = 200;
         
         let currentUser = null;
         let myRole = null;
         let myLoc = null;
+        let myPlayerNumber = null; // 4-digit ID
         let isCaught = false;
         let map = null;
         let watchId = null;
         let unsubscribeSnapshot = null;
         let mapMarkers = {}; 
         let otherPlayers = {};
-        let useHighAccuracy = true; // Tracks if we are in outdoor or indoor mode
+        let useHighAccuracy = true; 
+        let targetArrestId = null; // Who the cop is currently photographing
 
         // --- DOM Elements ---
         const showView = (id) => {
-            ['view-intro', 'view-locating', 'view-playing', 'view-caught'].forEach(v => {
+            ['view-intro', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught'].forEach(v => {
                 document.getElementById(v).classList.add('hidden');
             });
             document.getElementById(id).classList.remove('hidden');
@@ -212,7 +241,9 @@
         const updateLocationOnServer = (lat, lng, role = myRole) => {
             if (!currentUser) return;
             const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid);
-            setDoc(playerDocRef, { role: role, lat: lat, lng: lng, isCaught: isCaught, lastActive: Date.now() }, { merge: true });
+            const payload = { role: role, lat: lat, lng: lng, isCaught: isCaught, lastActive: Date.now() };
+            if (myPlayerNumber) payload.playerNumber = myPlayerNumber;
+            setDoc(playerDocRef, payload, { merge: true });
         };
 
         // --- 2. JOIN GAME LOGIC ---
@@ -220,10 +251,19 @@
             if (!currentUser) return;
             myRole = selectedRole;
             isCaught = false;
-            useHighAccuracy = true; // Reset to try high accuracy first
+            useHighAccuracy = true; 
             document.getElementById('error-msg').classList.add('hidden');
             
             showView('view-locating');
+
+            // Generate Random 4-digit number for Robbers
+            if (myRole === 'robber') {
+                myPlayerNumber = Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('my-robber-number').innerText = myPlayerNumber;
+                document.getElementById('robber-id-display').classList.remove('hidden');
+            } else {
+                document.getElementById('robber-id-display').classList.add('hidden');
+            }
 
             // Setup HUD text
             document.getElementById('hud-role-text').innerText = myRole;
@@ -233,8 +273,8 @@
             const hint = document.getElementById('hud-hint');
             hint.className = `text-sm font-medium ${myRole === 'cop' ? 'text-blue-300' : 'text-red-300'}`;
             hint.innerText = myRole === 'cop' 
-                ? "Patrol the area. Robbers only appear on radar when within 200m!" 
-                : "RUN! Cops are tracking you. Stay out of their 30m catch radius!";
+                ? "Tap on a Robber's dot within 30m to photograph and arrest them!" 
+                : "Cops are only visible if they get within 30m of you. RUN!";
 
             if (!navigator.geolocation) {
                 myLoc = { lat: 51.505, lng: -0.09 }; 
@@ -242,7 +282,6 @@
                 return;
             }
 
-            // Always try to get a quick, low-accuracy indoor fix first to immediately get them into the game
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -250,7 +289,6 @@
                     startGameplay();
                 },
                 (err) => {
-                    // Let them in anyway even if the first burst fails
                     console.warn("Initial GPS request failed, pushing to game anyway...", err);
                     myLoc = { lat: 51.505, lng: -0.09 }; 
                     startGameplay(); 
@@ -259,14 +297,7 @@
             );
         };
 
-        window.returnToMenu = () => {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (unsubscribeSnapshot) unsubscribeSnapshot();
-            document.getElementById('gps-warning').classList.add('hidden');
-            showView('view-intro');
-        };
-
-        // --- 3. ACTIVE GAMEPLAY LOGIC (Dual Accuracy System) ---
+        // --- 3. ACTIVE GAMEPLAY LOGIC ---
         const startGameplay = () => {
             showView('view-playing');
             
@@ -291,10 +322,11 @@
                 
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
-                    if (data.lastActive && (Date.now() - data.lastActive > 15 * 60 * 1000)) return; // ignore inactive (>15m)
+                    if (data.lastActive && (Date.now() - data.lastActive > 15 * 60 * 1000)) return; 
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
+                    // Did I get caught by a Cop's photo?
                     if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
                         isCaught = true;
                         showView('view-caught');
@@ -304,29 +336,22 @@
                 document.getElementById('hud-players-count').innerText = count;
                 otherPlayers = currentPlayers;
                 renderMapMarkers();
-                checkCatchLogic();
             });
         };
 
-        // --- 4. DUAL INDOOR/OUTDOOR TRACKING ---
+        // --- 4. GPS TRACKING ---
         const startTracking = () => {
             if (!navigator.geolocation) return;
             if (watchId) navigator.geolocation.clearWatch(watchId);
 
             watchId = navigator.geolocation.watchPosition(
                 (pos) => {
-                    // Success! Update location.
                     myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     updateLocationOnServer(myLoc.lat, myLoc.lng);
                     map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
-                    
                     document.getElementById('gps-warning').classList.add('hidden');
-                    checkCatchLogic(); 
                 },
                 (err) => {
-                    console.warn(`Tracker failed (High Accuracy: ${useHighAccuracy})`, err);
-                    
-                    // IF SATELLITES FAIL (Indoors): Switch to Wi-Fi/Cell Tower low accuracy mode!
                     if (useHighAccuracy) {
                         useHighAccuracy = false;
                         const warnEl = document.getElementById('gps-warning');
@@ -334,36 +359,17 @@
                         warnEl.classList.remove('hidden');
                         startTracking(); // Restart with low accuracy
                     } else {
-                        // Even low accuracy failed, keep retrying
                         const warnEl = document.getElementById('gps-warning');
                         warnEl.innerText = "WEAK SIGNAL... SEARCHING";
                         warnEl.classList.remove('hidden');
                     }
                 },
-                { 
-                    enableHighAccuracy: useHighAccuracy, 
-                    maximumAge: 5000, 
-                    timeout: 10000 
-                }
+                { enableHighAccuracy: useHighAccuracy, maximumAge: 5000, timeout: 10000 }
             );
         };
 
-        const checkCatchLogic = () => {
-            if (myRole !== 'robber' || isCaught || !myLoc) return;
-            
-            const cops = Object.values(otherPlayers).filter(p => p.role === 'cop' && p.lat && p.lng);
-            for (let cop of cops) {
-                if (getDistance(myLoc.lat, myLoc.lng, cop.lat, cop.lng) < CATCH_RADIUS_METERS) {
-                    isCaught = true;
-                    updateLocationOnServer(myLoc.lat, myLoc.lng, myRole); // save caught status
-                    showView('view-caught');
-                    break;
-                }
-            }
-        };
-
+        // --- 5. RENDER MAP & CLICK-TO-ARREST ---
         const renderMapMarkers = () => {
-            // Clear old markers completely to avoid sync issues
             Object.values(mapMarkers).forEach(m => map.removeLayer(m));
             mapMarkers = {};
 
@@ -375,10 +381,17 @@
                 const isCop = p.role === 'cop';
                 let isVisible = true;
 
-                // Secrecy Logic: Cops can't see robbers far away
-                if (!isMe && myRole === 'cop' && p.role === 'robber' && myLoc) {
-                    if (getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng) > COP_RADAR_METERS) {
-                        isVisible = false;
+                // NEW VISIBILITY RULES:
+                if (!isMe && myLoc) {
+                    const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                    
+                    if (myRole === 'cop' && p.role === 'robber') {
+                        // Cop sees Robber if within 200m
+                        if (dist > COP_RADAR_METERS) isVisible = false;
+                    } 
+                    else if (myRole === 'robber' && p.role === 'cop') {
+                        // Robber ONLY sees Cop if within 30m (Heartbeat warning!)
+                        if (dist > 30) isVisible = false;
                     }
                 }
 
@@ -387,18 +400,66 @@
                     const shapeClass = isCop ? 'rounded-sm' : 'rounded-full';
                     const mePulse = isMe ? '<div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-50"></div>' : '';
 
-                    const iconHtml = `<div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50">${mePulse}</div>`;
-                    const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [20, 20], iconAnchor: [10, 10] });
+                    const iconHtml = `<div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50 pointer-events-auto">${mePulse}</div>`;
+                    const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
 
-                    const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
+                    const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
                     mapMarkers[id] = marker;
+
+                    // CLICK TO ARREST LOGIC
+                    marker.on('click', () => {
+                        if (!isMe && myRole === 'cop' && p.role === 'robber') {
+                            const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                            if (dist <= CATCH_RADIUS_METERS) {
+                                // Close enough to arrest! Open Camera Modal.
+                                targetArrestId = id;
+                                showView('view-arrest-modal');
+                            } else {
+                                alert(`Get closer! You are ${Math.round(dist)}m away. You must be within 30m to photograph them.`);
+                            }
+                        }
+                    });
 
                     // Draw the blue radar circle around myself if I am a cop
                     if (isMe && myRole === 'cop') {
-                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: COP_RADAR_METERS, weight: 1, dashArray: '5, 10' }).addTo(map);
+                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: COP_RADAR_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
                         mapMarkers[`${id}_circle`] = circle;
                     }
                 }
+            });
+        };
+
+        // --- 6. CAMERA / PHOTO LOGIC ---
+        document.getElementById('camera-input').addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    document.getElementById('camera-preview').src = evt.target.result;
+                    document.getElementById('camera-preview').classList.remove('hidden');
+                    document.getElementById('confirm-arrest-btn').classList.remove('hidden');
+                }
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        window.closeArrestModal = () => {
+            targetArrestId = null;
+            document.getElementById('camera-preview').classList.add('hidden');
+            document.getElementById('confirm-arrest-btn').classList.add('hidden');
+            document.getElementById('camera-input').value = ""; // reset file
+            showView('view-playing');
+        };
+
+        window.submitArrest = () => {
+            if (!targetArrestId) return;
+            // Update the Robber's document to mark them as caught!
+            const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', targetArrestId);
+            setDoc(playerDocRef, { isCaught: true }, { merge: true }).then(() => {
+                alert("BUSTED! You successfully arrested the Robber.");
+                closeArrestModal();
+            }).catch(err => {
+                console.error("Error arresting:", err);
+                alert("Error making the arrest. Check connection.");
             });
         };
 
