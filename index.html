@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,6 +79,7 @@
 
     <!-- VIEW: LOCATING -->
     <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white mb-6 animate-pulse"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
         <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">ENTERING MAP...</h2>
     </div>
 
@@ -86,6 +88,7 @@
         <div id="map" class="absolute inset-0 z-0"></div>
         
         <div id="gps-warning" class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full text-xs font-black z-20 animate-pulse shadow-2xl whitespace-nowrap tracking-wider border-2 border-yellow-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             INDOOR MODE (LOWER ACCURACY)
         </div>
 
@@ -206,8 +209,7 @@
         const db = getFirestore(app);
 
         // --- GAME VARIABLES ---
-        const CATCH_RADIUS_METERS = 30; 
-        const COP_RADAR_METERS = 200;
+        const CATCH_RADIUS_METERS = 30; // 30m required to arrest
         
         let currentUser = null;
         let myRole = null;
@@ -233,8 +235,7 @@
         let backupRouteLine = null;
         let lastHandledBackupTime = 0;
 
-        // --- PERFECT OFFLINE CLEANUP ---
-        // Instantly mark as offline when minimizing or switching tabs
+        // 1. OFFLINE CLEANUP: Instantly mark offline if tab closes/minimizes
         document.addEventListener('visibilitychange', () => {
             if (currentUser && myRole) {
                 const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
@@ -246,7 +247,6 @@
             }
         });
         
-        // Failsafe for completely closing browser tab
         window.addEventListener('beforeunload', () => {
             if (currentUser) {
                 const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
@@ -391,7 +391,7 @@
             const hint = document.getElementById('hud-hint');
             hint.innerText = myRole === 'cop' 
                 ? "Tap on a Robber's dot within 30m to photograph and arrest them!" 
-                : "Cops are only visible if they get within 30m of you. RUN!";
+                : "Cops are searching for you! RUN!";
             
             const loadSimulatedLocation = () => {
                 const latJitter = (Math.random() - 0.5) * 0.002;
@@ -453,9 +453,9 @@
                     const data = docSnap.data();
                     
                     // OFFLINE CLEANUP: If marked offline instantly remove them. 
-                    // Fallback timeout increased to 5 minutes to prevent clock-drift bugs.
                     if (docSnap.id !== currentUser.uid) {
                         if (data.offline === true) return; 
+                        // Generous 5-minute timeout for clock-drift bugs
                         if (data.lastActive && (now - data.lastActive > 5 * 60 * 1000)) return; 
                     }
                     
@@ -507,6 +507,8 @@
                         useHighAccuracy = false;
                         document.getElementById('gps-warning').classList.remove('hidden');
                         startTracking(); 
+                    } else {
+                        document.getElementById('gps-warning').classList.remove('hidden');
                     }
                 },
                 { enableHighAccuracy: useHighAccuracy, maximumAge: 5000, timeout: 10000 }
@@ -538,16 +540,9 @@
 
                 const isMe = id === currentUser?.uid;
                 const isCop = p.role === 'cop';
-                let isVisible = true;
-
-                if (!isMe && myLoc) {
-                    const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
-                    if (myRole === 'cop' && p.role === 'robber') {
-                        if (dist > COP_RADAR_METERS) isVisible = false;
-                    } else if (myRole === 'robber' && p.role === 'cop') {
-                        if (dist > 30) isVisible = false;
-                    }
-                }
+                
+                // 2. ALWAYS VISIBLE DOTS (No Distance Limits on Vision)
+                let isVisible = true; 
 
                 if (isVisible) {
                     const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
@@ -570,6 +565,7 @@
                         }
                     }
 
+                    // 3. ARREST CHECK LOGIC (Must be within 30m still!)
                     marker.on('click', () => {
                         if (!isMe && myRole === 'cop' && p.role === 'robber') {
                             const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
@@ -583,8 +579,9 @@
                         }
                     });
 
+                    // Draw the blue arrest zone circle around myself if I am a cop
                     if (isMe && myRole === 'cop') {
-                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: COP_RADAR_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
+                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: CATCH_RADIUS_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
                         mapMarkers[`${id}_circle`] = circle;
                     }
                 }
