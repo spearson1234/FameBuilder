@@ -16,61 +16,52 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
+        /* Map Marker Resets */
         .custom-leaflet-icon { background: transparent; border: none; }
+        
+        /* 3D Cube Animation */
         .cube-wrapper { perspective: 1000px; width: 80px; height: 80px; margin-bottom: 30px; animation: runBounce 0.4s infinite alternate ease-in-out; z-index: 10; margin-left: auto; margin-right: auto; }
         .cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: spin3D 5s infinite linear; }
         .face { position: absolute; width: 80px; height: 80px; background: linear-gradient(135deg, #2a2a2a, #0a0a0a); border: 2px solid #555; border-radius: 12px; box-shadow: inset 0 0 15px rgba(0,0,0,0.9); }
         .dot { position: absolute; width: 14px; height: 14px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(255,255,255,0.8); }
+        
+        /* Cube Faces */
         .front { transform: rotateY(0deg) translateZ(40px); } .back { transform: rotateY(180deg) translateZ(40px); }
         .right { transform: rotateY(90deg) translateZ(40px); } .left { transform: rotateY(-90deg) translateZ(40px); }
         .top { transform: rotateX(90deg) translateZ(40px); } .bottom { transform: rotateX(-90deg) translateZ(40px); }
-        .tl { top: 12px; left: 12px; } .tr { top: 12px; right: 12px; } .ml { top: 31px; left: 12px; } .mr { top: 31px; right: 12px; } .c { top: 31px; left: 31px; } .bl { bottom: 12px; left: 12px; } .br { bottom: 12px; right: 12px; }
         
+        /* Dice Dots Positioning */
+        .tl { top: 12px; left: 12px; } .tr { top: 12px; right: 12px; } 
+        .ml { top: 31px; left: 12px; } .mr { top: 31px; right: 12px; } 
+        .c { top: 31px; left: 31px; } 
+        .bl { bottom: 12px; left: 12px; } .br { bottom: 12px; right: 12px; }
+        
+        /* Keyframes */
         @keyframes spin3D { 0% { transform: rotateX(-20deg) rotateY(0deg) rotateZ(0deg); } 100% { transform: rotateX(-20deg) rotateY(360deg) rotateZ(0deg); } }
         @keyframes runBounce { 0% { transform: translateY(0px) scaleY(0.95); } 100% { transform: translateY(-25px) scaleY(1.05); } }
         @keyframes legSwing1 { 0% { transform: rotate(30deg) translateY(0px); } 100% { transform: rotate(-50deg) translateY(-10px); } }
         @keyframes legSwing2 { 0% { transform: rotate(-50deg) translateY(-10px); } 100% { transform: rotate(30deg) translateY(0px); } }
         
+        /* UI Elements */
         .marker-label {
-            position: absolute;
-            top: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-            border: 1px solid rgba(255,255,255,0.2);
-            pointer-events: none;
-            z-index: 10;
+            position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 2px 8px;
+            border-radius: 4px; font-size: 10px; font-weight: bold;
+            white-space: nowrap; border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: none; z-index: 10;
         }
 
         #notification-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-            width: 90%;
-            max-width: 400px;
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; display: flex; flex-direction: column; gap: 10px;
+            pointer-events: none; width: 90%; max-width: 400px;
         }
 
         .notification {
-            background: rgba(0, 0, 0, 0.9);
-            border-left: 4px solid #3b82f6;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.9); border-left: 4px solid #3b82f6;
+            color: white; padding: 12px 20px; border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            animation: slideIn 0.3s ease-out forwards;
-            pointer-events: auto;
+            animation: slideIn 0.3s ease-out forwards; pointer-events: auto;
         }
 
         @keyframes slideIn {
@@ -81,6 +72,7 @@
 </head>
 <body class="bg-neutral-900 text-white overflow-hidden font-sans select-none">
 
+    <!-- Global Notification Anchor -->
     <div id="notification-container"></div>
 
     <div id="server-status" class="absolute top-0 left-0 w-full bg-neutral-800 text-white text-[10px] font-black text-center py-2 z-[60] uppercase tracking-widest flex items-center justify-center gap-2">
@@ -91,6 +83,7 @@
     <!-- VIEW: INTRO -->
     <div id="view-intro" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-40 pt-8">
         <div class="z-10 flex flex-col items-center max-w-lg w-full px-6 text-center">
+            <!-- 3D Character -->
             <div class="relative w-48 h-56 flex flex-col items-center justify-end mb-4">
                 <div class="cube-wrapper">
                     <div class="cube">
@@ -107,42 +100,37 @@
                     <svg style="animation: legSwing2 0.2s infinite alternate ease-in-out; transform-origin: top center;" class="absolute w-10 h-20 text-gray-400" viewBox="0 0 24 48"><path d="M 12 0 C 12 15, 22 25, 22 35 L 28 40" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
                 </div>
             </div>
+
             <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
             <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold flex items-center justify-center gap-2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                 IRL Pursuit
             </p>
-          
-            <div id="error-msg" class="hidden bg-red-900/50 border border-red-500 text-white p-4 rounded-xl mb-6 text-xs font-mono shadow-lg max-w-sm text-left w-full">
-                <div class="flex gap-3 items-start">
-                    <svg class="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <span id="error-msg-text"></span>
-                </div>
-            </div>
-
+            
             <div id="auth-loading" class="animate-pulse text-sm text-yellow-400 font-bold tracking-widest uppercase flex items-center gap-2">
                 <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle class="opacity-25" cx="12" cy="12" r="10"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                Initializing GPS...
+                Initializing Systems...
             </div>
-          
+            
             <div id="role-buttons" class="hidden w-full flex flex-col gap-4 justify-center max-w-xs mx-auto">
-                <button onclick="joinGame('cop')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-all">
+                <button id="btn-join-cop" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-all">
                     PLAY AS COP
                 </button>
-                <button onclick="joinGame('robber')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-all">
+                <button id="btn-join-robber" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-all">
                     PLAY AS ROBBER
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- VIEW: LOCATING -->
+    <!-- VIEW: LOCATING GPS -->
     <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-400 mb-6 animate-pulse"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
         <h2 class="text-2xl font-black mb-4 text-white tracking-widest uppercase animate-pulse">Scanning Grid...</h2>
+        <p class="text-gray-400 text-xs">Ensure location services are enabled.</p>
     </div>
 
-    <!-- VIEW: ACTIVE MAP -->
+    <!-- VIEW: ACTIVE MAP & HUD -->
     <div id="view-playing" class="hidden absolute inset-0 z-10">
         <div id="map" class="absolute inset-0 z-0 bg-neutral-900"></div>
         
@@ -152,6 +140,7 @@
 
         <div class="absolute top-12 left-4 right-4 z-10 flex flex-col gap-2 pointer-events-none">
             <div class="flex justify-between items-stretch gap-2">
+                <!-- Role Card -->
                 <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-2.5 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-center">
                     <div class="text-[8px] text-gray-400 uppercase tracking-widest font-bold mb-0.5">Role</div>
                     <div class="flex items-center gap-2">
@@ -159,18 +148,21 @@
                         <span id="hud-role-text" class="font-black text-sm uppercase text-white">ROLE</span>
                     </div>
                 </div>
-              
+                
+                <!-- Robber ID Card (Only shown to robbers) -->
                 <div id="robber-id-display" class="hidden flex-1 bg-black/80 backdrop-blur-md border border-red-500/50 p-2.5 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.3)] pointer-events-auto flex flex-col items-center justify-center">
                     <div class="text-[8px] text-red-400 uppercase tracking-widest font-bold mb-0.5">Your ID</div>
                     <div class="font-black text-white text-lg tracking-widest leading-none" id="my-robber-number">0000</div>
                 </div>
 
+                <!-- Cop Backup Button (Only shown to cops) -->
                 <div id="cop-backup-display" class="hidden flex-1 pointer-events-auto">
-                    <button onclick="requestBackup()" class="w-full h-full bg-blue-600 hover:bg-blue-500 border border-blue-400 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] flex flex-col items-center justify-center active:scale-95 transition-all text-white py-1">
+                    <button id="btn-request-backup" class="w-full h-full bg-blue-600 hover:bg-blue-500 border border-blue-400 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] flex flex-col items-center justify-center active:scale-95 transition-all text-white py-1">
                         <span class="text-[8px] uppercase tracking-widest font-black">BACKUP</span>
                     </button>
                 </div>
-              
+                
+                <!-- Online Count -->
                 <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-2.5 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-center">
                     <div class="text-[8px] text-gray-400 uppercase tracking-widest font-bold mb-0.5">Online</div>
                     <div class="font-bold text-white text-sm leading-none"><span id="hud-players-count">1</span></div>
@@ -185,7 +177,7 @@
         </div>
     </div>
 
-    <!-- VIEW: BACKUP REQUEST -->
+    <!-- VIEW: BACKUP REQUEST ALERT -->
     <div id="view-backup-request" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
         <div class="bg-neutral-900 border-2 border-blue-500 rounded-3xl p-8 w-full max-w-xs shadow-2xl">
             <h3 class="text-xl font-black text-white uppercase tracking-widest mb-2">Backup Required!</h3>
@@ -194,7 +186,7 @@
                 <button id="btn-accept-backup" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-500 transition-all">
                     RESPOND
                 </button>
-                <button onclick="document.getElementById('view-backup-request').classList.add('hidden')" class="w-full bg-neutral-800 text-gray-400 font-bold py-3 rounded-xl">
+                <button id="btn-ignore-backup" class="w-full bg-neutral-800 text-gray-400 font-bold py-3 rounded-xl hover:bg-neutral-700 transition-all">
                     IGNORE
                 </button>
             </div>
@@ -203,16 +195,33 @@
 
     <!-- VIEW: ARREST MODAL -->
     <div id="view-arrest-modal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
-        <h2 class="text-2xl text-blue-400 font-black mb-8 animate-pulse uppercase tracking-widest">Identify Robber</h2>
+        <h2 class="text-2xl text-blue-400 font-black mb-2 animate-pulse uppercase tracking-widest">Identify Robber</h2>
+        <p class="text-gray-400 text-xs mb-8">Scan their phone screen to bust them.</p>
+
+        <!-- Hidden File Input for Mobile Camera -->
         <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
-        <button id="open-cam-btn" onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-6 rounded-3xl font-black text-lg mb-6 w-full max-w-xs shadow-2xl">
+        
+        <button id="open-cam-btn" class="bg-white text-black px-8 py-6 rounded-3xl font-black text-lg mb-6 w-full max-w-xs shadow-2xl transition-transform active:scale-95">
             SCAN ID NUMBER
         </button>
-        <div id="ocr-processing" class="hidden flex-col items-center gap-4 mb-8">
+        
+        <div id="ocr-processing" class="hidden flex-col items-center gap-4 mb-6">
+            <svg class="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle class="opacity-25" cx="12" cy="12" r="10"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
             <p class="text-blue-400 font-bold tracking-widest text-sm animate-pulse">PROCESSING BIOMETRICS...</p>
         </div>
-        <img id="camera-preview" class="hidden w-64 h-64 object-cover rounded-3xl mb-8 border-4 border-blue-500" />
-        <button onclick="closeArrestModal()" class="text-gray-500 hover:text-white font-bold uppercase tracking-widest text-xs">
+        
+        <img id="camera-preview" class="hidden w-48 h-48 object-cover rounded-3xl mb-6 border-4 border-blue-500" />
+        
+        <!-- Manual Fallback (Crucial for IRL when cameras fail) -->
+        <div id="manual-entry-section" class="w-full max-w-xs mb-8 border-t border-gray-800 pt-6">
+            <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-3 font-bold">Or enter manually</p>
+            <div class="flex gap-2">
+                <input type="number" id="manual-pin-input" class="flex-1 bg-neutral-800 text-white font-mono text-center px-4 py-3 rounded-xl border border-neutral-700 focus:outline-none focus:border-blue-500 tracking-widest text-lg" placeholder="0000">
+                <button id="manual-pin-btn" class="bg-blue-600 px-6 py-3 rounded-xl font-bold text-white uppercase text-sm hover:bg-blue-500">Verify</button>
+            </div>
+        </div>
+
+        <button id="btn-abort-arrest" class="text-gray-500 hover:text-white font-bold uppercase tracking-widest text-xs py-2 px-4 rounded-lg">
             Abort Mission
         </button>
     </div>
@@ -221,7 +230,7 @@
     <div id="view-caught" class="hidden absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 text-center">
         <h2 class="text-6xl font-black text-red-500 mb-2 tracking-tighter uppercase">BUSTED!</h2>
         <p class="text-gray-400 mb-12 tracking-widest uppercase text-[10px]">Sentence: Return to Start</p>
-        <button onclick="location.reload()" class="bg-white text-black font-black py-5 px-10 rounded-full uppercase tracking-widest text-sm shadow-2xl">
+        <button onclick="location.reload()" class="bg-white text-black font-black py-5 px-10 rounded-full uppercase tracking-widest text-sm shadow-2xl hover:bg-gray-200 active:scale-95 transition-all">
             RESPAWN
         </button>
     </div>
@@ -231,30 +240,40 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, query, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // ==========================================
+        // 1. CONFIGURATION & STATE
+        // ==========================================
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'catch-flee-irl-v4';
         const firebaseConfig = JSON.parse(__firebase_config);
+        const CATCH_RADIUS_METERS = 40; // Meters within which a cop can click a robber
+        const STALE_MARKER_TIMEOUT = 45000; // Remove markers if no updates for 45s
 
         let db, auth, user = null;
-        let myRole = null;
+        let myRole = null; // 'cop' or 'robber'
         let myLoc = { lat: 0, lng: 0 };
         let myPlayerNumber = null;
         let myTrail = [];
         let isCaught = false;
+        
         let map = null;
         let watchId = null;
         let mapMarkers = {};
         let trailPolylines = {};
         let otherPlayers = {};
+        
+        // Target tracking for arrests and backup
         let targetArrestId = null;
         let targetArrestNumber = null;
         let activeBackupTarget = null;
         let lastHandledBackupTime = Date.now();
+        let unsubPlayers = null;
 
-        const CATCH_RADIUS_METERS = 30;
-
+        // ==========================================
+        // 2. DOM UTILS & NOTIFICATIONS
+        // ==========================================
         const showView = (id) => {
-            document.querySelectorAll('#view-intro, #view-locating, #view-playing, #view-arrest-modal, #view-caught, #view-backup-request')
-                .forEach(v => v.classList.add('hidden'));
+            const views = ['view-intro', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught', 'view-backup-request'];
+            views.forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         };
 
@@ -266,6 +285,7 @@
             if (type === 'error') note.style.borderLeftColor = '#ef4444';
             note.innerText = msg;
             container.appendChild(note);
+            
             setTimeout(() => {
                 note.style.opacity = '0';
                 note.style.transform = 'translateY(-20px)';
@@ -273,7 +293,9 @@
             }, 3500);
         };
 
-        // Firebase Setup
+        // ==========================================
+        // 3. FIREBASE INIT
+        // ==========================================
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
@@ -287,6 +309,7 @@
                 }
             } catch (err) {
                 console.error("Auth failed", err);
+                showNotification("Authentication failed. Reloading.", "error");
             }
         };
 
@@ -302,46 +325,214 @@
 
         initAuth();
 
+        // ==========================================
+        // 4. GAME STATE SYNC (FIRESTORE)
+        // ==========================================
         const updateMyData = async () => {
-            if (!user || !myRole) return;
+            if (!user || !myRole || isCaught) return;
+            
             const playerRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid);
             
+            // Manage trail array for robbers
             if (myRole === 'robber') {
                 const lastTrail = myTrail[myTrail.length - 1];
-                if (!lastTrail || getDistance(lastTrail.lat, lastTrail.lng, myLoc.lat, myLoc.lng) > 5) {
+                // Record trail point if moved more than ~5 meters (Leaflet helps here later, but standard haversine is fast for local memory checks)
+                if (!lastTrail || calculateDistanceBasic(lastTrail.lat, lastTrail.lng, myLoc.lat, myLoc.lng) > 5) {
                     myTrail.push({ lat: myLoc.lat, lng: myLoc.lng });
-                    if (myTrail.length > 50) myTrail.shift();
+                    if (myTrail.length > 30) myTrail.shift(); // Keep last 30 points
                 }
             }
 
             try {
                 await setDoc(playerRef, {
+                    uid: user.uid,
                     role: myRole,
                     lat: myLoc.lat,
                     lng: myLoc.lng,
                     isCaught: isCaught,
                     playerNumber: myPlayerNumber,
                     trail: myRole === 'robber' ? myTrail : null,
-                    lastUpdate: Date.now(),
-                    uid: user.uid
+                    lastUpdate: Date.now()
                 }, { merge: true });
-            } catch (e) { console.error("Sync error", e); }
+            } catch (e) { 
+                console.error("Sync error", e); 
+            }
         };
 
-        function getDistance(lat1, lon1, lat2, lon2) {
+        // Basic haversine for quick trail logic without relying on Leaflet object instantiation
+        const calculateDistanceBasic = (lat1, lon1, lat2, lon2) => {
             const R = 6371e3;
             const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
             const dp = (lat2 - lat1) * Math.PI / 180, dl = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-        }
+        };
 
-        window.joinGame = (role) => {
+        // ==========================================
+        // 5. MAP & GEOLOCATION
+        // ==========================================
+        const startGPS = (pos) => {
+            myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            
+            showView('view-playing');
+            initMap();
+            
+            watchId = navigator.geolocation.watchPosition((p) => {
+                myLoc = { lat: p.coords.latitude, lng: p.coords.longitude };
+                updateMyData();
+                document.getElementById('gps-warning').classList.add('hidden');
+                
+                // Update my own marker immediately
+                if (mapMarkers['me']) {
+                    mapMarkers['me'].setLatLng([myLoc.lat, myLoc.lng]);
+                } else {
+                    renderMarkers();
+                }
+            }, (err) => {
+                console.warn("GPS Warn:", err);
+                document.getElementById('gps-warning').classList.remove('hidden');
+            }, { 
+                enableHighAccuracy: true, 
+                maximumAge: 0, 
+                timeout: 10000 
+            });
+
+            // Listen to all players
+            const playersCol = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            unsubPlayers = onSnapshot(playersCol, (snapshot) => {
+                const now = Date.now();
+                
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    
+                    if (data.uid === user.uid) {
+                        // Watch for my own arrest
+                        if (data.isCaught && !isCaught) { 
+                            isCaught = true; 
+                            showView('view-caught'); 
+                        }
+                    } else if (now - data.lastUpdate < STALE_MARKER_TIMEOUT) {
+                        otherPlayers[data.uid] = data;
+                        
+                        // Check for backup requests from other cops
+                        if (myRole === 'cop' && data.role === 'cop' && data.needsBackup > lastHandledBackupTime) {
+                            lastHandledBackupTime = data.needsBackup;
+                            activeBackupTarget = { lat: data.lat, lng: data.lng };
+                            document.getElementById('view-backup-request').classList.remove('hidden');
+                        }
+                    } else {
+                        // Prune stale players
+                        delete otherPlayers[data.uid];
+                        if (mapMarkers[data.uid]) {
+                            map.removeLayer(mapMarkers[data.uid]);
+                            delete mapMarkers[data.uid];
+                        }
+                        if (trailPolylines[data.uid]) {
+                            map.removeLayer(trailPolylines[data.uid]);
+                            delete trailPolylines[data.uid];
+                        }
+                    }
+                });
+                
+                renderMarkers();
+                document.getElementById('hud-players-count').innerText = Object.keys(otherPlayers).length + 1;
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+        };
+
+        const initMap = () => {
+            if (map) {
+                map.invalidateSize();
+                map.setView([myLoc.lat, myLoc.lng], 18);
+                return;
+            }
+            
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([myLoc.lat, myLoc.lng], 18);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+            
+            // Fix map sizing issues if initialized while hidden
+            setTimeout(() => { map.invalidateSize(); }, 200);
+        };
+
+        const renderMarkers = () => {
+            if (!map) return;
+            
+            // My Marker
+            const myIcon = L.divIcon({ 
+                html: `<div class="w-6 h-6 ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.5)]"><div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-40"></div><div class="marker-label">YOU</div></div>`, 
+                className: 'custom-leaflet-icon', 
+                iconSize: [30, 30], 
+                iconAnchor: [15, 15] 
+            });
+            
+            if (!mapMarkers['me']) {
+                mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: myIcon, zIndexOffset: 1000 }).addTo(map);
+            }
+
+            // Other Players
+            Object.values(otherPlayers).forEach(p => {
+                if (p.isCaught) { 
+                    if (mapMarkers[p.uid]) { map.removeLayer(mapMarkers[p.uid]); delete mapMarkers[p.uid]; }
+                    if (trailPolylines[p.uid]) { map.removeLayer(trailPolylines[p.uid]); delete trailPolylines[p.uid]; }
+                    return; 
+                }
+                
+                const icon = L.divIcon({ 
+                    html: `<div class="w-6 h-6 ${p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-lg"><div class="marker-label">${p.role === 'cop' ? 'COP' : 'SUSPECT'}</div></div>`, 
+                    className: 'custom-leaflet-icon', 
+                    iconSize: [30, 30], 
+                    iconAnchor: [15, 15] 
+                });
+                
+                if (!mapMarkers[p.uid]) {
+                    const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
+                    
+                    // Click handler for Arrests
+                    m.on('click', () => {
+                        if (myRole === 'cop' && p.role === 'robber') {
+                            const myLatLng = L.latLng(myLoc.lat, myLoc.lng);
+                            const targetLatLng = L.latLng(p.lat, p.lng);
+                            const dist = myLatLng.distanceTo(targetLatLng);
+                            
+                            if (dist <= CATCH_RADIUS_METERS) { 
+                                targetArrestId = p.uid; 
+                                targetArrestNumber = p.playerNumber; 
+                                showView('view-arrest-modal'); 
+                            } else { 
+                                showNotification(`Too far! Move ${Math.round(dist - CATCH_RADIUS_METERS)}m closer.`, "error"); 
+                            }
+                        }
+                    });
+                    mapMarkers[p.uid] = m;
+                } else {
+                    mapMarkers[p.uid].setLatLng([p.lat, p.lng]);
+                }
+                
+                // Draw Trails for robbers if you are a cop
+                if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
+                    const pts = p.trail.map(t => [t.lat, t.lng]);
+                    if (!trailPolylines[p.uid]) {
+                        trailPolylines[p.uid] = L.polyline(pts, { color: '#ef4444', weight: 3, opacity: 0.5, dashArray: '5, 10' }).addTo(map);
+                    } else {
+                        trailPolylines[p.uid].setLatLngs(pts);
+                    }
+                }
+            });
+        };
+
+        // ==========================================
+        // 6. EVENT LISTENERS & UI LOGIC
+        // ==========================================
+        
+        // Joining Roles
+        const joinGame = (role) => {
             if (!user) {
-                showNotification("Waiting for satellite link...", "error");
+                showNotification("Still connecting to network. Please wait.", "error");
                 return;
             }
             myRole = role;
+            
             if (role === 'robber') {
                 myPlayerNumber = Math.floor(1000 + Math.random() * 9000);
                 document.getElementById('my-robber-number').innerText = myPlayerNumber;
@@ -352,90 +543,59 @@
 
             document.getElementById('hud-role-text').innerText = role.toUpperCase();
             document.getElementById('hud-role-indicator').className = `w-2 h-2 rounded-full animate-pulse ${role === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
-            document.getElementById('hud-hint').innerHTML = role === 'cop' ? "Find red targets and scan ID" : "Stay away from blue targets";
+            document.getElementById('hud-hint').innerHTML = role === 'cop' ? "Tap a red target to attempt an arrest" : "Stay away from blue dots!";
 
             showView('view-locating');
+            
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(startGPS, () => showNotification("GPS Error", "error"), { enableHighAccuracy: true });
+                navigator.geolocation.getCurrentPosition(
+                    startGPS, 
+                    () => {
+                        showNotification("GPS Error: Please enable location access.", "error");
+                        showView('view-intro'); // reset
+                    }, 
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                showNotification("Geolocation not supported by this browser.", "error");
             }
         };
 
-        const startGPS = (pos) => {
-            myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            showView('view-playing');
-            initMap();
-            
-            watchId = navigator.geolocation.watchPosition((p) => {
-                myLoc = { lat: p.coords.latitude, lng: p.coords.longitude };
-                updateMyData();
-                document.getElementById('gps-warning').classList.add('hidden');
-            }, () => document.getElementById('gps-warning').classList.remove('hidden'), { enableHighAccuracy: true });
+        document.getElementById('btn-join-cop').onclick = () => joinGame('cop');
+        document.getElementById('btn-join-robber').onclick = () => joinGame('robber');
 
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), (snapshot) => {
-                const now = Date.now();
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    if (data.uid === user.uid) {
-                        if (data.isCaught && !isCaught) { isCaught = true; showView('view-caught'); }
-                    } else if (now - data.lastUpdate < 45000) {
-                        otherPlayers[data.uid] = data;
-                        if (myRole === 'cop' && data.role === 'cop' && data.needsBackup > lastHandledBackupTime) {
-                            lastHandledBackupTime = data.needsBackup;
-                            activeBackupTarget = { lat: data.lat, lng: data.lng };
-                            document.getElementById('view-backup-request').classList.remove('hidden');
-                        }
-                    } else { delete otherPlayers[data.uid]; }
-                });
-                renderMarkers();
-                document.getElementById('hud-players-count').innerText = Object.keys(otherPlayers).length + 1;
-            });
-        };
-
-        const initMap = () => {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([myLoc.lat, myLoc.lng], 18);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
-        };
-
-        const renderMarkers = () => {
-            if (!map) return;
-            const myIcon = L.divIcon({ html: `<div class="w-6 h-6 ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-lg"><div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-30"></div><div class="marker-label">YOU</div></div>`, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
-            if (!mapMarkers['me']) mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: myIcon, zIndexOffset: 1000 }).addTo(map);
-            else mapMarkers['me'].setLatLng([myLoc.lat, myLoc.lng]);
-
-            Object.values(otherPlayers).forEach(p => {
-                if (p.isCaught) { if (mapMarkers[p.uid]) { map.removeLayer(mapMarkers[p.uid]); delete mapMarkers[p.uid]; } return; }
-                const icon = L.divIcon({ html: `<div class="w-6 h-6 ${p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-lg"><div class="marker-label">${p.role === 'cop' ? 'COP' : 'ID: '+p.playerNumber}</div></div>`, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
-                if (!mapMarkers[p.uid]) {
-                    const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
-                    m.on('click', () => {
-                        if (myRole === 'cop' && p.role === 'robber') {
-                            const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
-                            if (dist <= CATCH_RADIUS_METERS + 10) { targetArrestId = p.uid; targetArrestNumber = p.playerNumber; showView('view-arrest-modal'); }
-                            else showNotification("Get closer!", "error");
-                        }
-                    });
-                    mapMarkers[p.uid] = m;
-                } else mapMarkers[p.uid].setLatLng([p.lat, p.lng]);
-                
-                if (myRole === 'cop' && p.role === 'robber' && p.trail?.length > 1) {
-                    const pts = p.trail.map(t => [t.lat, t.lng]);
-                    if (!trailPolylines[p.uid]) trailPolylines[p.uid] = L.polyline(pts, { color: '#ef4444', weight: 2, opacity: 0.4, dashArray: '5, 10' }).addTo(map);
-                    else trailPolylines[p.uid].setLatLngs(pts);
-                }
-            });
-        };
-
-        window.requestBackup = async () => {
+        // Backup Logic
+        document.getElementById('btn-request-backup').onclick = async () => {
             if (!user) return;
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid), { needsBackup: Date.now() });
-            showNotification("Backup requested!", "success");
+            showNotification("Backup requested to your location!", "success");
         };
 
-        document.getElementById('btn-accept-backup').onclick = () => { if (activeBackupTarget) map.flyTo([activeBackupTarget.lat, activeBackupTarget.lng], 19); showView('view-playing'); };
+        document.getElementById('btn-accept-backup').onclick = () => { 
+            if (activeBackupTarget && map) {
+                map.flyTo([activeBackupTarget.lat, activeBackupTarget.lng], 19, { animate: true, duration: 1.5 }); 
+            }
+            showView('view-playing'); 
+        };
+        
+        document.getElementById('btn-ignore-backup').onclick = () => showView('view-playing');
+
+        // Arrest logic (Camera/OCR)
+        const resetArrestUI = () => {
+            document.getElementById('camera-preview').classList.add('hidden');
+            document.getElementById('ocr-processing').classList.add('hidden');
+            document.getElementById('open-cam-btn').classList.remove('hidden');
+            document.getElementById('camera-input').value = '';
+            document.getElementById('manual-pin-input').value = '';
+        };
+
+        document.getElementById('open-cam-btn').onclick = () => document.getElementById('camera-input').click();
+        document.getElementById('btn-abort-arrest').onclick = () => { resetArrestUI(); showView('view-playing'); };
 
         document.getElementById('camera-input').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
+            
             const reader = new FileReader();
             reader.onload = async (evt) => {
                 const base64 = evt.target.result;
@@ -443,29 +603,58 @@
                 document.getElementById('camera-preview').classList.remove('hidden');
                 document.getElementById('ocr-processing').classList.remove('hidden');
                 document.getElementById('open-cam-btn').classList.add('hidden');
+                
                 try {
-                    const worker = await Tesseract.createWorker('eng');
+                    // Initialize Tesseract 5 correctly
+                    const worker = await Tesseract.createWorker("eng");
                     const { data: { text } } = await worker.recognize(base64);
                     await worker.terminate();
-                    if (text.replace(/\D/g, '').includes(targetArrestNumber.toString())) {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', targetArrestId), { isCaught: true });
-                        showNotification("BUSTED!", "success");
-                        closeArrestModal();
-                    } else { showNotification("ID Mismatch", "error"); resetArrestUI(); }
-                } catch (err) { showNotification("Scanner Error", "error"); resetArrestUI(); }
+                    
+                    const numbersOnly = text.replace(/\D/g, '');
+                    
+                    if (numbersOnly.includes(targetArrestNumber.toString())) {
+                        await finalizeArrest();
+                    } else { 
+                        showNotification("ID Mismatch. Try again or enter manually.", "error"); 
+                        resetArrestUI(); 
+                    }
+                } catch (err) { 
+                    console.error(err);
+                    showNotification("Scanner Failed. Use manual entry.", "error"); 
+                    resetArrestUI(); 
+                }
             };
             reader.readAsDataURL(file);
         };
 
-        const resetArrestUI = () => {
-            document.getElementById('camera-preview').classList.add('hidden');
-            document.getElementById('ocr-processing').classList.add('hidden');
-            document.getElementById('open-cam-btn').classList.remove('hidden');
-            document.getElementById('camera-input').value = '';
+        // Manual Arrest Fallback
+        document.getElementById('manual-pin-btn').onclick = async () => {
+            const inputVal = document.getElementById('manual-pin-input').value;
+            if (inputVal === targetArrestNumber.toString()) {
+                await finalizeArrest();
+            } else {
+                showNotification("Incorrect PIN.", "error");
+            }
         };
 
-        window.closeArrestModal = () => { resetArrestUI(); showView('view-playing'); };
-        window.addEventListener('beforeunload', () => { if (user) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); });
+        const finalizeArrest = async () => {
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', targetArrestId), { isCaught: true });
+                showNotification("TARGET BUSTED!", "success");
+                resetArrestUI();
+                showView('view-playing');
+            } catch (e) {
+                showNotification("Network error recording arrest.", "error");
+            }
+        };
+
+        // Cleanup on exit
+        window.addEventListener('beforeunload', () => { 
+            if (user && !isCaught) {
+                // Best effort deletion. The 45s timeout handles it if this fails.
+                deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', user.uid)); 
+            }
+        });
     </script>
 </body>
 </html>
