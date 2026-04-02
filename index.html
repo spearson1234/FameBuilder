@@ -62,7 +62,7 @@
             <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
             
             <p class="text-gray-400 mb-2 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
-            <p class="text-gray-500 mb-8 text-sm">📍 You must allow Location Sharing to play!</p>
+            <p class="text-gray-500 mb-8 text-sm">📍 Works outdoors & indoors!</p>
             
             <div id="error-msg" class="hidden bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium shadow-lg max-w-sm"></div>
 
@@ -75,20 +75,18 @@
         </div>
     </div>
 
-    <!-- VIEW: LOCATING (Waiting for Permission) -->
+    <!-- VIEW: LOCATING (Transition Screen) -->
     <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
-        <div class="text-6xl mb-6 animate-bounce">👆</div>
-        <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">WAITING FOR PERMISSION...</h2>
-        <p class="text-gray-300 text-lg mt-4 max-w-xs font-bold">Please click "Allow" on the location popup to enter the game!</p>
+        <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">ENTERING MAP...</h2>
     </div>
 
     <!-- VIEW: ACTIVE MAP -->
     <div id="view-playing" class="hidden absolute inset-0 z-10">
         <div id="map" class="absolute inset-0 z-0"></div>
         
-        <!-- GPS WARNING BANNER (Shows if it's struggling to get exact satellite lock) -->
-        <div id="gps-warning" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-5 py-2 rounded-full text-xs font-black z-20 animate-pulse shadow-lg whitespace-nowrap tracking-wider">
-            IMPROVING GPS SIGNAL...
+        <!-- GPS WARNING BANNER -->
+        <div id="gps-warning" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full text-xs font-black z-20 animate-pulse shadow-2xl whitespace-nowrap tracking-wider border-2 border-yellow-700">
+            INDOOR MODE (LOWER ACCURACY)
         </div>
 
         <!-- HUD -->
@@ -119,7 +117,7 @@
     <!-- VIEW: CAUGHT -->
     <div id="view-caught" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
         <h2 class="text-7xl font-black text-red-500 mb-4 animate-bounce tracking-tighter">BUSTED!</h2>
-        <p class="text-gray-300 mb-8 text-lg max-w-xs">A cop got within 30 meters of your physical location!</p>
+        <p class="text-gray-300 mb-8 text-lg max-w-xs">A cop got within 30 meters of your location!</p>
         <button onclick="returnToMenu()" class="bg-white text-black font-black text-xl py-4 px-12 rounded-full active:bg-gray-300 transition-colors shadow-[0_0_40px_rgba(255,255,255,0.4)]">MAIN MENU</button>
     </div>
 
@@ -150,7 +148,7 @@
         const db = getFirestore(app);
 
         // --- GAME VARIABLES ---
-        const CATCH_RADIUS_METERS = 30;
+        const CATCH_RADIUS_METERS = 30; // 30 meters allows for some indoor GPS drift
         const COP_RADAR_METERS = 200;
         
         let currentUser = null;
@@ -162,6 +160,7 @@
         let unsubscribeSnapshot = null;
         let mapMarkers = {}; 
         let otherPlayers = {};
+        let useHighAccuracy = true; // Tracks if we are in outdoor or indoor mode
 
         // --- DOM Elements ---
         const showView = (id) => {
@@ -216,19 +215,14 @@
             setDoc(playerDocRef, { role: role, lat: lat, lng: lng, isCaught: isCaught, lastActive: Date.now() }, { merge: true });
         };
 
-        // --- 2. JOIN GAME LOGIC (Instant Prompt Fix) ---
+        // --- 2. JOIN GAME LOGIC ---
         window.joinGame = (selectedRole) => {
             if (!currentUser) return;
             myRole = selectedRole;
             isCaught = false;
+            useHighAccuracy = true; // Reset to try high accuracy first
             document.getElementById('error-msg').classList.add('hidden');
             
-            if (!navigator.geolocation) {
-                showError("Your device or browser does not support GPS.");
-                return;
-            }
-
-            // Show "Please click Allow" screen immediately
             showView('view-locating');
 
             // Setup HUD text
@@ -239,27 +233,29 @@
             const hint = document.getElementById('hud-hint');
             hint.className = `text-sm font-medium ${myRole === 'cop' ? 'text-blue-300' : 'text-red-300'}`;
             hint.innerText = myRole === 'cop' 
-                ? "Physically patrol the area. Robbers only appear on radar when within 200m!" 
-                : "RUN! Cops are tracking you IRL. Stay out of their 30m catch radius!";
+                ? "Patrol the area. Robbers only appear on radar when within 200m!" 
+                : "RUN! Cops are tracking you. Stay out of their 30m catch radius!";
 
-            // TIER 1: LOW ACCURACY (Triggers prompt instantly without freezing)
+            if (!navigator.geolocation) {
+                myLoc = { lat: 51.505, lng: -0.09 }; 
+                startGameplay();
+                return;
+            }
+
+            // Always try to get a quick, low-accuracy indoor fix first to immediately get them into the game
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    // They clicked Allow!
                     myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     updateLocationOnServer(myLoc.lat, myLoc.lng, myRole);
-                    startGameplay(false);
+                    startGameplay();
                 },
                 (err) => {
-                    // They clicked Block or it failed completely
-                    if (err.code === 1) { // 1 = PERMISSION_DENIED
-                        showError("You blocked Location Access! You must go into your browser settings, allow location for this site, and reload to play.");
-                    } else {
-                        showError("Could not get your location. Please check your signal and ensure GPS is turned on.");
-                    }
-                    showView('view-intro');
+                    // Let them in anyway even if the first burst fails
+                    console.warn("Initial GPS request failed, pushing to game anyway...", err);
+                    myLoc = { lat: 51.505, lng: -0.09 }; 
+                    startGameplay(); 
                 },
-                { enableHighAccuracy: false, timeout: 30000, maximumAge: Infinity } // False = Fast prompt!
+                { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
             );
         };
 
@@ -270,8 +266,8 @@
             showView('view-intro');
         };
 
-        // --- 3. ACTIVE GAMEPLAY LOGIC (High Accuracy) ---
-        const startGameplay = (isWaitingForGps) => {
+        // --- 3. ACTIVE GAMEPLAY LOGIC (Dual Accuracy System) ---
+        const startGameplay = () => {
             showView('view-playing');
             
             // Initialize Map
@@ -284,28 +280,11 @@
                 map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
             }
 
-            // TIER 2: HIGH ACCURACY (Tracking actual movement)
-            if (navigator.geolocation) {
-                watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                        updateLocationOnServer(myLoc.lat, myLoc.lng);
-                        map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
-                        
-                        document.getElementById('gps-warning').classList.add('hidden');
-                        checkCatchLogic(); 
-                    },
-                    (err) => {
-                        console.warn("Watch position error/timeout:", err);
-                        // Show "Improving GPS Signal" banner if it temporarily loses track of them
-                        document.getElementById('gps-warning').classList.remove('hidden');
-                    },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 } // True = Track running!
-                );
-            }
+            startTracking();
 
             // Listen to other players in real-time
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
             unsubscribeSnapshot = onSnapshot(playersRef, (snapshot) => {
                 const currentPlayers = {};
                 let count = 0;
@@ -316,7 +295,6 @@
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
-                    // Did I get caught globally?
                     if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
                         isCaught = true;
                         showView('view-caught');
@@ -328,6 +306,46 @@
                 renderMapMarkers();
                 checkCatchLogic();
             });
+        };
+
+        // --- 4. DUAL INDOOR/OUTDOOR TRACKING ---
+        const startTracking = () => {
+            if (!navigator.geolocation) return;
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    // Success! Update location.
+                    myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    updateLocationOnServer(myLoc.lat, myLoc.lng);
+                    map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
+                    
+                    document.getElementById('gps-warning').classList.add('hidden');
+                    checkCatchLogic(); 
+                },
+                (err) => {
+                    console.warn(`Tracker failed (High Accuracy: ${useHighAccuracy})`, err);
+                    
+                    // IF SATELLITES FAIL (Indoors): Switch to Wi-Fi/Cell Tower low accuracy mode!
+                    if (useHighAccuracy) {
+                        useHighAccuracy = false;
+                        const warnEl = document.getElementById('gps-warning');
+                        warnEl.innerText = "INDOOR MODE (LOWER ACCURACY)";
+                        warnEl.classList.remove('hidden');
+                        startTracking(); // Restart with low accuracy
+                    } else {
+                        // Even low accuracy failed, keep retrying
+                        const warnEl = document.getElementById('gps-warning');
+                        warnEl.innerText = "WEAK SIGNAL... SEARCHING";
+                        warnEl.classList.remove('hidden');
+                    }
+                },
+                { 
+                    enableHighAccuracy: useHighAccuracy, 
+                    maximumAge: 5000, 
+                    timeout: 10000 
+                }
+            );
         };
 
         const checkCatchLogic = () => {
