@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -155,8 +156,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- GITHUB CONFIGURATION ---
-        const githubFirebaseConfig = {
+        // --- EXCLUSIVE FIREBASE CONFIGURATION ---
+        // This ensures EVERYONE connects to the exact same server
+        const firebaseConfig = {
             apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
             authDomain: "login-71866.firebaseapp.com",
             databaseURL: "https://login-71866-default-rtdb.firebaseio.com",
@@ -166,9 +168,8 @@
             appId: "1:434042354282:web:fbc98eaefe2ef6513a2813"
         }; 
         
-        const isCanvas = typeof __firebase_config !== 'undefined';
-        const firebaseConfig = isCanvas ? JSON.parse(__firebase_config) : githubFirebaseConfig;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Hardcoded Game Room ID so players on all platforms are grouped together
+        const SHARED_GAME_ID = "catch-and-flee-global-server";
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -181,7 +182,7 @@
         let currentUser = null;
         let myRole = null;
         let myLoc = null;
-        let myPlayerNumber = null; // 4-digit ID
+        let myPlayerNumber = null; 
         let isCaught = false;
         let map = null;
         let watchId = null;
@@ -189,7 +190,7 @@
         let mapMarkers = {}; 
         let otherPlayers = {};
         let useHighAccuracy = true; 
-        let targetArrestId = null; // Who the cop is currently photographing
+        let targetArrestId = null; 
 
         // --- DOM Elements ---
         const showView = (id) => {
@@ -208,13 +209,19 @@
         // --- 1. Auth Init ---
         const initAuth = async () => {
             try {
+                // Try to use a custom token if present, otherwise fallback to Anonymous Sign-in
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } catch(e) {
+                        await signInAnonymously(auth); 
+                    }
                 } else {
                     await signInAnonymously(auth);
                 }
             } catch (err) {
                 console.error("Auth Error:", err);
+                showError("Could not connect. Please make sure Anonymous Authentication is turned ON in your Firebase Console.");
             }
         };
         
@@ -240,7 +247,8 @@
 
         const updateLocationOnServer = (lat, lng, role = myRole) => {
             if (!currentUser) return;
-            const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid);
+            // Using SHARED_GAME_ID instead of a dynamic ID to keep everyone together
+            const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
             const payload = { role: role, lat: lat, lng: lng, isCaught: isCaught, lastActive: Date.now() };
             if (myPlayerNumber) payload.playerNumber = myPlayerNumber;
             setDoc(playerDocRef, payload, { merge: true });
@@ -314,7 +322,7 @@
             startTracking();
 
             // Listen to other players in real-time
-            const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+            const playersRef = collection(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players');
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             unsubscribeSnapshot = onSnapshot(playersRef, (snapshot) => {
                 const currentPlayers = {};
@@ -357,7 +365,7 @@
                         const warnEl = document.getElementById('gps-warning');
                         warnEl.innerText = "INDOOR MODE (LOWER ACCURACY)";
                         warnEl.classList.remove('hidden');
-                        startTracking(); // Restart with low accuracy
+                        startTracking(); 
                     } else {
                         const warnEl = document.getElementById('gps-warning');
                         warnEl.innerText = "WEAK SIGNAL... SEARCHING";
@@ -390,7 +398,7 @@
                         if (dist > COP_RADAR_METERS) isVisible = false;
                     } 
                     else if (myRole === 'robber' && p.role === 'cop') {
-                        // Robber ONLY sees Cop if within 30m (Heartbeat warning!)
+                        // Robber ONLY sees Cop if within 30m
                         if (dist > 30) isVisible = false;
                     }
                 }
@@ -411,7 +419,6 @@
                         if (!isMe && myRole === 'cop' && p.role === 'robber') {
                             const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
                             if (dist <= CATCH_RADIUS_METERS) {
-                                // Close enough to arrest! Open Camera Modal.
                                 targetArrestId = id;
                                 showView('view-arrest-modal');
                             } else {
@@ -446,14 +453,13 @@
             targetArrestId = null;
             document.getElementById('camera-preview').classList.add('hidden');
             document.getElementById('confirm-arrest-btn').classList.add('hidden');
-            document.getElementById('camera-input').value = ""; // reset file
+            document.getElementById('camera-input').value = ""; 
             showView('view-playing');
         };
 
         window.submitArrest = () => {
             if (!targetArrestId) return;
-            // Update the Robber's document to mark them as caught!
-            const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', targetArrestId);
+            const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', targetArrestId);
             setDoc(playerDocRef, { isCaught: true }, { merge: true }).then(() => {
                 alert("BUSTED! You successfully arrested the Robber.");
                 closeArrestModal();
@@ -463,6 +469,13 @@
             });
         };
 
+        window.returnToMenu = () => {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+            showView('view-intro');
+        };
+
     </script>
 </body>
 </html>
+
