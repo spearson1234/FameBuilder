@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,9 +58,12 @@
 
             <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
             
-            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold">TESTING MODE ENABLED</p>
+            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
             
-            <div id="error-msg" class="hidden bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium shadow-lg max-w-sm"></div>
+            <div id="error-msg" class="hidden bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium shadow-lg max-w-sm flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span id="error-msg-text"></span>
+            </div>
 
             <div id="auth-loading" class="animate-pulse text-xl text-yellow-400 font-bold">Connecting...</div>
             
@@ -74,6 +76,7 @@
 
     <!-- VIEW: LOCATING -->
     <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white mb-6 animate-pulse"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
         <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">ENTERING MAP...</h2>
     </div>
 
@@ -81,71 +84,86 @@
     <div id="view-playing" class="hidden absolute inset-0 z-10">
         <div id="map" class="absolute inset-0 z-0"></div>
         
-        <div id="gps-warning" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full text-xs font-black z-20 animate-pulse shadow-2xl whitespace-nowrap tracking-wider border-2 border-yellow-700">
+        <div id="gps-warning" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-6 py-3 rounded-full text-xs font-black z-20 animate-pulse shadow-2xl whitespace-nowrap tracking-wider border-2 border-yellow-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             INDOOR MODE (LOWER ACCURACY)
         </div>
 
-        <!-- HUD -->
+        <!-- REDESIGNED SLEEK HUD -->
         <div class="absolute top-4 left-4 right-4 z-10 flex flex-col gap-2 pointer-events-none">
-            <div class="flex justify-between items-start">
-                <div class="bg-black/70 backdrop-blur-md border border-neutral-700 p-4 rounded-2xl shadow-xl pointer-events-auto">
-                    <div class="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Role</div>
+            <div class="flex justify-between items-stretch gap-2">
+                <!-- Role Block -->
+                <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-3 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Role</div>
                     <div class="flex items-center gap-2">
-                        <div id="hud-role-indicator" class="w-3 h-3 rounded-full animate-pulse bg-white"></div>
-                        <span id="hud-role-text" class="font-black text-2xl uppercase text-white">ROLE</span>
+                        <div id="hud-role-indicator" class="w-2.5 h-2.5 rounded-full animate-pulse bg-white"></div>
+                        <span id="hud-role-text" class="font-black text-lg uppercase text-white leading-none">ROLE</span>
                     </div>
                 </div>
                 
-                <!-- ROBBER ID DISPLAY -->
-                <div id="robber-id-display" class="hidden bg-red-900/90 border-2 border-red-500 p-3 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.6)] pointer-events-auto text-center ml-2">
-                    <div class="text-[10px] text-red-200 uppercase tracking-widest font-bold mb-0 leading-none">YOUR ID NUMBER</div>
-                    <div class="font-black text-white text-3xl tracking-widest" id="my-robber-number">0000</div>
+                <!-- Robber ID Block (Cleaned up, only shows for robbers) -->
+                <div id="robber-id-display" class="hidden flex-1 bg-black/80 backdrop-blur-md border border-red-500/50 p-3 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.3)] pointer-events-auto flex-col items-center justify-center">
+                    <div class="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-1">ID Number</div>
+                    <div class="font-black text-white text-xl tracking-widest leading-none" id="my-robber-number">0000</div>
                 </div>
 
-                <div class="bg-black/70 backdrop-blur-md border border-neutral-700 p-3 rounded-2xl shadow-xl pointer-events-auto text-right">
-                    <div class="text-xs text-gray-400 uppercase tracking-widest font-bold">Online</div>
-                    <div class="font-bold text-white text-lg"><span id="hud-players-count">1</span> Players</div>
+                <!-- Online Players Block -->
+                <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-3 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-end">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Online</div>
+                    <div class="font-bold text-white text-lg leading-none"><span id="hud-players-count">1</span></div>
                 </div>
             </div>
         </div>
 
         <!-- Hint -->
         <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none w-11/12 max-w-sm">
-            <div class="bg-black/80 backdrop-blur-md border border-neutral-700 p-4 rounded-xl text-center shadow-2xl">
-                <p id="hud-hint" class="text-sm font-medium text-yellow-400">TESTING MODE: Cops can tap Robbers from any distance!</p>
+            <div class="bg-black/80 backdrop-blur-md border border-neutral-700 p-4 rounded-xl text-center shadow-2xl flex flex-col items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <p id="hud-hint" class="text-xs font-medium text-white"></p>
             </div>
         </div>
     </div>
 
     <!-- VIEW: ARREST MODAL (For Cops) -->
     <div id="view-arrest-modal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
-        <h2 class="text-4xl text-blue-400 font-black mb-2 animate-pulse">ARREST ROBBER</h2>
-        <p class="text-gray-300 mb-6 text-lg max-w-xs">Take a photo of the Robber's screen showing their 4-digit ID number to lock them up!</p>
+        <h2 class="text-4xl text-blue-400 font-black mb-2 animate-pulse uppercase tracking-wider">Arrest Robber</h2>
+        <p class="text-gray-300 mb-8 text-lg max-w-xs">Take a photo of the Robber's screen showing their 4-digit ID number to lock them up!</p>
         
         <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
         
-        <button onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-xl mb-6 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95 transition-transform">
-            📸 OPEN CAMERA
+        <button onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-lg mb-6 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95 transition-transform flex items-center justify-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+            OPEN CAMERA
         </button>
         
         <img id="camera-preview" class="hidden w-64 h-64 object-cover rounded-2xl mb-6 border-4 border-blue-500 shadow-2xl" />
         
-        <button id="confirm-arrest-btn" class="hidden bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-full font-black text-2xl shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-95 transition-transform" onclick="submitArrest()">
-            🚨 CONFIRM ARREST 🚨
+        <button id="confirm-arrest-btn" class="hidden bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-full font-black text-xl shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-95 transition-transform flex items-center justify-center gap-3" onclick="submitArrest()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+            CONFIRM ARREST
         </button>
         
-        <button onclick="closeArrestModal()" class="mt-8 text-gray-500 font-bold underline p-4 uppercase tracking-widest">Cancel / Go Back</button>
+        <button onclick="closeArrestModal()" class="mt-8 text-gray-500 font-bold underline p-4 uppercase tracking-widest text-sm">Cancel / Go Back</button>
     </div>
 
     <!-- VIEW: CAUGHT / JAIL -->
     <div id="view-caught" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md border-8 border-neutral-800">
-        <div class="text-8xl mb-4 animate-bounce">🍬🔒</div>
-        <h2 class="text-6xl font-black text-red-500 mb-2 tracking-tighter">CAUGHT!</h2>
-        <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl mt-4">
-            <p class="text-white font-bold text-xl mb-2">You are locked up.</p>
-            <p class="text-gray-400 text-sm max-w-xs">A Cop photographed your ID and arrested you. You cannot play until the next round starts.</p>
+        <!-- SVG Icons: Candy/Treat and Lock -->
+        <div class="flex items-center justify-center gap-4 mb-6 animate-bounce">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400 drop-shadow-md"><path d="m9.5 7.5-2 2a4.95 4.95 0 1 0 7 7l2-2a4.95 4.95 0 1 0-7-7Z"/><path d="M14 6.5v-.5c0-1.6 1.3-2.9 2.9-2.9h.2L14.7 1a3.1 3.1 0 0 0-4.4 0 3.1 3.1 0 0 0 0 4.4l2.4 2.4"/><path d="M7.5 14h-.5C5.4 14 4.1 15.3 4.1 16.9v.2L1 14.7a3.1 3.1 0 0 0 0 4.4 3.1 3.1 0 0 0 4.4 0l2.4-2.4"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 drop-shadow-md"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </div>
-        <p class="text-neutral-600 text-xs mt-12">(Refresh the page to leave the game)</p>
+
+        <h2 class="text-5xl font-black text-red-500 mb-2 tracking-widest uppercase">Caught!</h2>
+        
+        <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl mt-6 shadow-2xl max-w-sm">
+            <p class="text-white font-bold text-xl mb-3 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                You are locked up.
+            </p>
+            <p class="text-gray-400 text-sm">A Cop photographed your ID and arrested you. You cannot play until the next round starts.</p>
+        </div>
+        <p class="text-neutral-600 text-xs mt-12 uppercase tracking-widest font-bold">(Refresh the page to leave)</p>
     </div>
 
 
@@ -173,6 +191,10 @@
         const db = getFirestore(app);
 
         // --- GAME VARIABLES ---
+        // RESTORED PRODUCTION DISTANCES
+        const CATCH_RADIUS_METERS = 30; // 30 meters allows for some indoor GPS drift during arrest
+        const COP_RADAR_METERS = 200;   // Cops can only see Robbers within 200m
+        
         let currentUser = null;
         let myRole = null;
         let myLoc = null;
@@ -195,7 +217,7 @@
 
         const showError = (msg) => {
             const errEl = document.getElementById('error-msg');
-            errEl.innerText = msg;
+            document.getElementById('error-msg-text').innerText = msg;
             errEl.classList.remove('hidden');
         };
 
@@ -235,6 +257,16 @@
             setDoc(playerDocRef, payload, { merge: true });
         };
 
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const p1 = lat1 * Math.PI / 180;
+            const p2 = lat2 * Math.PI / 180;
+            const dp = (lat2 - lat1) * Math.PI / 180;
+            const dl = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
         // --- 2. JOIN GAME LOGIC ---
         window.joinGame = (selectedRole) => {
             if (!currentUser) return;
@@ -249,16 +281,23 @@
                 myPlayerNumber = Math.floor(1000 + Math.random() * 9000);
                 document.getElementById('my-robber-number').innerText = myPlayerNumber;
                 document.getElementById('robber-id-display').classList.remove('hidden');
+                document.getElementById('robber-id-display').classList.add('flex');
             } else {
                 document.getElementById('robber-id-display').classList.add('hidden');
+                document.getElementById('robber-id-display').classList.remove('flex');
             }
 
             document.getElementById('hud-role-text').innerText = myRole;
             const indicator = document.getElementById('hud-role-indicator');
-            indicator.className = `w-3 h-3 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
+            indicator.className = `w-2.5 h-2.5 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
+            
+            // Set Dynamic Game Rules Text
+            const hint = document.getElementById('hud-hint');
+            hint.innerText = myRole === 'cop' 
+                ? "Tap on a Robber's dot within 30m to photograph and arrest them!" 
+                : "Cops are only visible if they get within 30m of you. RUN!";
             
             const loadSimulatedLocation = () => {
-                // Add a random tiny jitter so the markers don't perfectly overlap if both phones fail to get GPS
                 const latJitter = (Math.random() - 0.5) * 0.002;
                 const lngJitter = (Math.random() - 0.5) * 0.002;
                 myLoc = { lat: 51.505 + latJitter, lng: -0.09 + lngJitter }; 
@@ -289,9 +328,9 @@
             showView('view-playing');
             
             if (!map) {
-                map = L.map('map', { zoomControl: false }).setView([myLoc.lat, myLoc.lng], 18);
+                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([myLoc.lat, myLoc.lng], 18);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap', maxZoom: 20
+                    maxZoom: 20
                 }).addTo(map);
             } else {
                 map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
@@ -299,7 +338,6 @@
 
             startTracking();
 
-            // Listen to other players
             const playersRef = collection(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players');
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             unsubscribeSnapshot = onSnapshot(playersRef, (snapshot) => {
@@ -312,7 +350,6 @@
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
-                    // Listen for my own arrest status
                     if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
                         isCaught = true;
                         showView('view-caught');
@@ -339,14 +376,8 @@
                 (err) => {
                     if (useHighAccuracy) {
                         useHighAccuracy = false;
-                        const warnEl = document.getElementById('gps-warning');
-                        warnEl.innerText = "INDOOR MODE (LOWER ACCURACY)";
-                        warnEl.classList.remove('hidden');
+                        document.getElementById('gps-warning').classList.remove('hidden');
                         startTracking(); 
-                    } else {
-                        const warnEl = document.getElementById('gps-warning');
-                        warnEl.innerText = "WEAK SIGNAL... SEARCHING";
-                        warnEl.classList.remove('hidden');
                     }
                 },
                 { enableHighAccuracy: useHighAccuracy, maximumAge: 5000, timeout: 10000 }
@@ -366,8 +397,20 @@
                 const isMe = id === currentUser?.uid;
                 const isCop = p.role === 'cop';
                 
-                // FOR TESTING: We forcefully override isVisible so everyone can see everyone
+                // PRODUCTION VISIBILITY LOGIC
                 let isVisible = true; 
+                if (!isMe && myLoc) {
+                    const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                    
+                    if (myRole === 'cop' && p.role === 'robber') {
+                        // Cop sees Robber if within 200m
+                        if (dist > COP_RADAR_METERS) isVisible = false;
+                    } 
+                    else if (myRole === 'robber' && p.role === 'cop') {
+                        // Robber ONLY sees Cop if within 30m (Early Warning System)
+                        if (dist > 30) isVisible = false;
+                    }
+                }
 
                 if (isVisible) {
                     const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
@@ -380,14 +423,24 @@
                     const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
                     mapMarkers[id] = marker;
 
-                    // TESTING MODE CLICK ARREST
+                    // PRODUCTION CLICK-TO-ARREST (Must be within 30m)
                     marker.on('click', () => {
                         if (!isMe && myRole === 'cop' && p.role === 'robber') {
-                            // NO DISTANCE RESTRICTIONS FOR TESTING!
-                            targetArrestId = id;
-                            showView('view-arrest-modal');
+                            const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                            if (dist <= CATCH_RADIUS_METERS) {
+                                targetArrestId = id;
+                                showView('view-arrest-modal');
+                            } else {
+                                alert(`Get closer! You are ${Math.round(dist)}m away. You must be within 30m to photograph them.`);
+                            }
                         }
                     });
+
+                    // Draw the blue radar circle around myself if I am a cop
+                    if (isMe && myRole === 'cop') {
+                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: COP_RADAR_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
+                        mapMarkers[`${id}_circle`] = circle;
+                    }
                 }
             });
         };
@@ -400,6 +453,7 @@
                     document.getElementById('camera-preview').src = evt.target.result;
                     document.getElementById('camera-preview').classList.remove('hidden');
                     document.getElementById('confirm-arrest-btn').classList.remove('hidden');
+                    document.getElementById('confirm-arrest-btn').classList.add('flex');
                 }
                 reader.readAsDataURL(e.target.files[0]);
             }
@@ -409,6 +463,7 @@
             targetArrestId = null;
             document.getElementById('camera-preview').classList.add('hidden');
             document.getElementById('confirm-arrest-btn').classList.add('hidden');
+            document.getElementById('confirm-arrest-btn').classList.remove('flex');
             document.getElementById('camera-input').value = ""; 
             showView('view-playing');
         };
@@ -436,4 +491,3 @@
     </script>
 </body>
 </html>
-
