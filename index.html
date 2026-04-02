@@ -213,26 +213,24 @@
         let myRole = null;
         let myLoc = null;
         let myPlayerNumber = null; 
-        let myTrail = []; // Array of {lat, lng} to draw path
+        let myTrail = []; 
         let isCaught = false;
         let map = null;
         let watchId = null;
+        let heartbeatInterval = null;
         let unsubscribeSnapshot = null;
         let mapMarkers = {}; 
-        let trailPolylines = {}; // Holds the drawn trails
+        let trailPolylines = {}; 
         let otherPlayers = {};
         let useHighAccuracy = true; 
         
-        // Arrest Variables
         let targetArrestId = null; 
         let targetArrestNumber = null;
 
-        // Backup Variables
-        let activeBackupTarget = null; // {lat, lng} of the cop who called backup
+        let activeBackupTarget = null; 
         let backupRouteLine = null;
         let lastHandledBackupTime = 0;
 
-        // Offline tracking (handle page hide/close)
         window.addEventListener('pagehide', () => {
             if (currentUser) {
                 const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
@@ -253,14 +251,12 @@
             errEl.classList.remove('hidden');
         };
 
-        // Synthesize Police Radio Beep (No external files needed)
         const playRadioSound = () => {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
                 const ctx = new AudioContext();
                 
-                // Short Beep
                 const osc = ctx.createOscillator();
                 const gainNode = ctx.createGain();
                 osc.type = 'square';
@@ -275,7 +271,6 @@
                 osc.start();
                 osc.stop(ctx.currentTime + 0.3);
 
-                // Static Noise Burst
                 const bufferSize = ctx.sampleRate * 0.4; 
                 const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -289,11 +284,9 @@
                 noise.connect(noiseGain);
                 noiseGain.connect(ctx.destination);
                 noise.start(ctx.currentTime + 0.1);
-
-            } catch(e) { console.log("Audio play failed"); }
+            } catch(e) {}
         };
 
-        // --- 1. Auth Init ---
         const initAuth = async () => {
             try {
                 await signInAnonymously(auth);
@@ -315,7 +308,7 @@
         const updateLocationOnServer = (lat, lng) => {
             if (!currentUser) return;
             
-            // If Robber, record path (trail) if moved > 5 meters
+            // Build trailing coordinates if Robber
             if (myRole === 'robber') {
                 if (myTrail.length === 0) {
                     myTrail.push({lat, lng});
@@ -323,7 +316,7 @@
                     const lastPoint = myTrail[myTrail.length - 1];
                     if (getDistance(lastPoint.lat, lastPoint.lng, lat, lng) > 5) {
                         myTrail.push({lat, lng});
-                        if (myTrail.length > 40) myTrail.shift(); // Keep trail to last 40 points to save db space
+                        if (myTrail.length > 40) myTrail.shift(); 
                     }
                 }
             }
@@ -353,7 +346,6 @@
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
-        // --- 2. JOIN GAME LOGIC ---
         window.joinGame = (selectedRole) => {
             if (!currentUser) return;
             myRole = selectedRole;
@@ -411,7 +403,6 @@
             );
         };
 
-        // --- 3. ACTIVE GAMEPLAY LOGIC ---
         const startGameplay = () => {
             showView('view-playing');
             
@@ -426,7 +417,14 @@
 
             startTracking();
 
-            // Real-time Database Listener
+            // HEARTBEAT: Ping server every 10 seconds so we don't vanish when standing still
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (currentUser && myLoc && !isCaught) {
+                    updateLocationOnServer(myLoc.lat, myLoc.lng);
+                }
+            }, 10000);
+
             const playersRef = collection(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players');
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             
@@ -438,31 +436,28 @@
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-                    // OFFLINE CLEANUP (Goal #1): If marked offline OR inactive for > 30 seconds, remove dot immediately
+                    // OFFLINE CLEANUP: If marked offline OR inactive for > 30 seconds, remove dot immediately
                     if (data.offline || (data.lastActive && (now - data.lastActive > 30000))) return;
                     
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
-                    // Am I Caught?
                     if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
                         isCaught = true;
                         showView('view-caught');
                     }
 
-                    // BACKUP REQUEST LISTENER (Goal #4)
                     if (myRole === 'cop' && docSnap.id !== currentUser.uid && data.needsBackup) {
-                        if (data.needsBackup > lastHandledBackupTime && data.needsBackup > (now - 20000)) { // Valid for 20s
+                        if (data.needsBackup > lastHandledBackupTime && data.needsBackup > (now - 20000)) { 
                             lastHandledBackupTime = data.needsBackup;
                             playRadioSound();
                             document.getElementById('view-backup-request').classList.remove('hidden');
                             
-                            // Setup Accept Button
                             document.getElementById('btn-accept-backup').onclick = () => {
                                 document.getElementById('view-backup-request').classList.add('hidden');
                                 activeBackupTarget = { lat: data.lat, lng: data.lng };
-                                playRadioSound(); // Confirm sound
-                                renderMapMarkers(); // Draw route immediately
+                                playRadioSound(); 
+                                renderMapMarkers(); 
                             };
                         }
                     }
@@ -488,17 +483,19 @@
                 (err) => {
                     if (useHighAccuracy) {
                         useHighAccuracy = false;
-                        document.getElementById('gps-warning').classList.remove('hidden');
+                        const warnEl = document.getElementById('gps-warning');
+                        warnEl.classList.remove('hidden');
                         startTracking(); 
+                    } else {
+                        const warnEl = document.getElementById('gps-warning');
+                        warnEl.classList.remove('hidden');
                     }
                 },
                 { enableHighAccuracy: useHighAccuracy, maximumAge: 5000, timeout: 10000 }
             );
         };
 
-        // --- 4. RENDER MAP & CLICK-TO-ARREST & TRAILS ---
         const renderMapMarkers = () => {
-            // Clean up existing markers & trails
             Object.values(mapMarkers).forEach(m => map.removeLayer(m));
             mapMarkers = {};
             
@@ -510,7 +507,6 @@
                 backupRouteLine = null;
             }
 
-            // Draw Backup Route Line
             if (myRole === 'cop' && activeBackupTarget && myLoc) {
                 backupRouteLine = L.polyline([
                     [myLoc.lat, myLoc.lng],
@@ -546,20 +542,19 @@
                     const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
                     mapMarkers[id] = marker;
 
-                    // ROBBER TRAIL RENDERING (Goal #2)
+                    // ROBBER TRAIL RENDERING (Fixed Type Error)
                     if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
-                        const latLngs = p.trail.map(coord => [coord.lat, doc.lng || coord.lng]);
+                        const latLngs = p.trail.map(coord => [coord.lat, coord.lng]);
                         const trail = L.polyline(latLngs, { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '5, 8' }).addTo(map);
                         trailPolylines[id] = trail;
                     }
 
-                    // ARREST CLICK
                     marker.on('click', () => {
                         if (!isMe && myRole === 'cop' && p.role === 'robber') {
                             const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
                             if (dist <= CATCH_RADIUS_METERS) {
                                 targetArrestId = id;
-                                targetArrestNumber = p.playerNumber; // Store the exact ID we need to scan
+                                targetArrestNumber = p.playerNumber; 
                                 showView('view-arrest-modal');
                             } else {
                                 alert(`Get closer! You are ${Math.round(dist)}m away. You must be within 30m to photograph them.`);
@@ -567,7 +562,6 @@
                         }
                     });
 
-                    // Draw the blue radar circle around myself if I am a cop
                     if (isMe && myRole === 'cop') {
                         const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: COP_RADAR_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
                         mapMarkers[`${id}_circle`] = circle;
@@ -576,7 +570,6 @@
             });
         };
 
-        // --- 5. CAMERA / OCR ARREST LOGIC (Goal #3) ---
         document.getElementById('camera-input').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 var reader = new FileReader();
@@ -605,7 +598,6 @@
             showView('view-playing');
         };
 
-        // AI OCR ARREST SYSTEM
         window.submitArrest = async () => {
             if (!targetArrestId || !targetArrestNumber) return;
             
@@ -621,23 +613,16 @@
             loading.classList.add('flex');
 
             try {
-                // Run Tesseract JS to extract text from the image
                 const result = await Tesseract.recognize(img.src, 'eng');
                 const scannedText = result.data.text;
                 
-                console.log("Scanned Text:", scannedText);
-                console.log("Target Number:", targetArrestNumber);
-
-                // STRICT CHECK: Does the scanned image contain the exact 4-digit Robber ID?
                 if (scannedText.includes(targetArrestNumber.toString())) {
-                    // SUCCESS! Number Match!
                     const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', targetArrestId);
                     await setDoc(playerDocRef, { isCaught: true }, { merge: true });
                     alert(`✅ SUCCESS! Arrest Confirmed.\nScanned ID: ${targetArrestNumber}`);
                     closeArrestModal();
                 } else {
-                    // FAIL! Number not found!
-                    alert(`❌ ARREST FAILED!\nCould not detect ID Number [${targetArrestNumber}] in the photo. Please try again and make sure the screen is clear!`);
+                    alert(`❌ ARREST FAILED!\nCould not detect ID Number [${targetArrestNumber}] in the photo. Please make sure the screen is clear!`);
                     closeArrestModal();
                 }
             } catch (err) {
@@ -647,17 +632,14 @@
             }
         };
 
-        // --- 6. CALL BACKUP FEATURE (Goal #4) ---
         window.callBackup = () => {
             if (myRole !== 'cop' || !currentUser || !myLoc) return;
             
             playRadioSound();
             
-            // Broadcast backup request to DB
             const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
             setDoc(playerDocRef, { needsBackup: Date.now() }, { merge: true });
             
-            // Visual feedback for the cop calling backup
             const btn = document.getElementById('cop-backup-display').querySelector('button');
             btn.classList.replace('bg-blue-600', 'bg-green-600');
             btn.querySelector('span').innerText = "DISPATCHED";
@@ -670,6 +652,7 @@
 
         window.returnToMenu = () => {
             if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             
             if (currentUser) {
