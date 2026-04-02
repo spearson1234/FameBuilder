@@ -15,10 +15,11 @@
     <!-- Tesseract JS for AI Image Text Recognition (OCR) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-    <!-- Firebase SDKs (Compat version for Maximum Compatibility in Previews/GitHub) -->
+    <!-- Firebase SDKs (Compat version to include RTDB, Firestore, and Auth) -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-database-compat.js"></script>
 
     <style>
         .cube-wrapper { perspective: 1000px; width: 80px; height: 80px; margin-bottom: 30px; animation: runBounce 0.4s infinite alternate ease-in-out; z-index: 10; margin-left: auto; margin-right: auto; }
@@ -72,7 +73,7 @@
                 <span id="error-msg-text"></span>
             </div>
 
-            <div id="auth-loading" class="animate-pulse text-xl text-yellow-400 font-bold">Connecting...</div>
+            <div id="auth-loading" class="animate-pulse text-xl text-yellow-400 font-bold">Connecting to Database...</div>
             
             <div id="role-buttons" class="hidden w-full flex flex-col gap-4 justify-center max-w-xs mx-auto">
                 <button onclick="joinGame('cop')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all shadow-lg text-lg tracking-wider">PLAY AS COP</button>
@@ -120,6 +121,12 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
                         <span class="text-[10px] uppercase tracking-widest font-black mt-1">BACKUP</span>
                     </button>
+                </div>
+                
+                <!-- Online Players Block -->
+                <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-3 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-end">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Online</div>
+                    <div class="font-bold text-white text-lg leading-none"><span id="hud-players-count">0</span></div>
                 </div>
             </div>
         </div>
@@ -170,7 +177,7 @@
 
         <button id="confirm-arrest-btn" class="hidden bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-full font-black text-xl shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-95 transition-transform items-center justify-center gap-3" onclick="submitArrest()">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
-            CONFIRM ARREST
+            SCAN & ARREST
         </button>
         
         <button id="cancel-arrest-btn" onclick="closeArrestModal()" class="mt-4 text-gray-500 font-bold underline p-4 uppercase tracking-widest text-sm">Cancel / Go Back</button>
@@ -186,18 +193,15 @@
         <h2 class="text-5xl font-black text-red-500 mb-2 tracking-widest uppercase">Caught!</h2>
         
         <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl mt-6 shadow-2xl max-w-sm">
-            <p class="text-white font-bold text-xl mb-3 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                You are locked up.
-            </p>
+            <p class="text-white font-bold text-xl mb-3">You are locked up.</p>
             <p class="text-gray-400 text-sm">A Cop photographed your ID and arrested you. You cannot play until the next round starts.</p>
         </div>
         <p class="text-neutral-600 text-xs mt-12 uppercase tracking-widest font-bold">(Refresh the page to leave)</p>
     </div>
 
     <!-- CORE JAVASCRIPT LOGIC -->
-    <script>
-        // YOUR FIREBASE CONFIGURATION
+    <script type="module">
+        // Initialize Firebase with COMPAT libraries
         const firebaseConfig = {
             apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
             authDomain: "login-71866.firebaseapp.com",
@@ -208,15 +212,15 @@
             appId: "1:434042354282:web:fbc98eaefe2ef6513a2813"
         }; 
         
-        const SHARED_GAME_ID = "catch-and-flee-global-server";
+        const SHARED_GAME_ID = "catch-and-flee-global";
         
-        // Initialize Firebase Using Compat Scripts
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        const db = firebase.firestore();
+        const db = firebase.firestore(); // Used for permanent arrest logs
+        const rtdb = firebase.database(); // REALTIME DATABASE: Flawless online dots!
 
         // --- GAME VARIABLES ---
-        const CATCH_RADIUS_METERS = 30; // Must be within 30m to open camera
+        const CATCH_RADIUS_METERS = 30; 
         
         let currentUser = null;
         let myRole = null;
@@ -226,8 +230,6 @@
         let isCaught = false;
         let map = null;
         let watchId = null;
-        let heartbeatInterval = null;
-        let unsubscribeSnapshot = null;
         let mapMarkers = {}; 
         let trailPolylines = {}; 
         let otherPlayers = {};
@@ -235,29 +237,10 @@
         
         let targetArrestId = null; 
         let targetArrestNumber = null;
-
         let activeBackupTarget = null; 
         let backupRouteLine = null;
         let lastHandledBackupTime = 0;
-
-        // 1. OFFLINE CLEANUP (Instantly remove when tab hides)
-        document.addEventListener('visibilitychange', () => {
-            if (currentUser && myRole) {
-                const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
-                if (document.visibilityState === 'hidden') {
-                    playerDocRef.set({ offline: true }, { merge: true });
-                } else {
-                    playerDocRef.set({ offline: false, lastActive: Date.now() }, { merge: true });
-                }
-            }
-        });
-        
-        window.addEventListener('beforeunload', () => {
-            if (currentUser) {
-                const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
-                playerDocRef.set({ offline: true }, { merge: true });
-            }
-        });
+        let myRtdbRef = null;
 
         const showView = (id) => {
             ['view-intro', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught'].forEach(v => {
@@ -277,16 +260,13 @@
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
                 const ctx = new AudioContext();
-                
                 const osc = ctx.createOscillator();
                 const gainNode = ctx.createGain();
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(800, ctx.currentTime);
                 osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.1);
-                
                 gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-                
                 osc.connect(gainNode);
                 gainNode.connect(ctx.destination);
                 osc.start();
@@ -295,9 +275,7 @@
                 const bufferSize = ctx.sampleRate * 0.4; 
                 const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    data[i] = Math.random() * 2 - 1;
-                }
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
                 const noise = ctx.createBufferSource();
                 noise.buffer = buffer;
                 const noiseGain = ctx.createGain();
@@ -308,24 +286,14 @@
             } catch(e) {}
         };
 
+        // --- 1. AUTH & RTDB PRESENCE ---
         const initAuth = async () => {
             try {
-                // If in Canvas env, it might provide a token. Otherwise standard anon auth.
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    try {
-                        await auth.signInWithCustomToken(__initial_auth_token);
-                    } catch(e) {
-                        await auth.signInAnonymously(); 
-                    }
-                } else {
-                    await auth.signInAnonymously();
-                }
+                await auth.signInAnonymously();
             } catch (err) {
-                console.error("Auth Error:", err);
                 showError("Could not connect. Ensure Anonymous Auth is ON in Firebase.");
             }
         };
-        
         initAuth();
 
         auth.onAuthStateChanged((user) => {
@@ -333,38 +301,38 @@
             if (user) {
                 document.getElementById('auth-loading').classList.add('hidden');
                 document.getElementById('role-buttons').classList.remove('hidden');
+                
+                // RTDB MAGIC: Automatically delete player from map when browser closes!
+                myRtdbRef = rtdb.ref(`games/${SHARED_GAME_ID}/players/${user.uid}`);
+                myRtdbRef.onDisconnect().remove(); 
             }
         });
 
         const updateLocationOnServer = (lat, lng) => {
-            if (!currentUser) return;
+            if (!currentUser || !myRtdbRef) return;
             
-            // Build Tracking Trails safely
+            // Build Trail
             if (myRole === 'robber') {
                 if (myTrail.length === 0) {
-                    myTrail.push({lat: lat, lng: lng});
+                    myTrail.push({lat, lng});
                 } else {
-                    const lastPoint = myTrail[myTrail.length - 1];
-                    if (getDistance(lastPoint.lat, lastPoint.lng, lat, lng) > 5) { 
-                        myTrail.push({lat: lat, lng: lng});
+                    const lastP = myTrail[myTrail.length - 1];
+                    if (getDistance(lastP.lat, lastP.lng, lat, lng) > 5) { 
+                        myTrail.push({lat, lng});
                         if (myTrail.length > 50) myTrail.shift(); 
                     }
                 }
             }
 
-            const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
-            const payload = { 
+            // Sync to RTDB for perfect live map updates
+            myRtdbRef.set({ 
                 role: myRole, 
                 lat: lat, 
                 lng: lng, 
-                isCaught: isCaught, 
-                lastActive: Date.now(),
-                offline: false 
-            };
-            if (myPlayerNumber) payload.playerNumber = myPlayerNumber;
-            if (myRole === 'robber') payload.trail = myTrail;
-            
-            playerDocRef.set(payload, { merge: true });
+                isCaught: isCaught,
+                playerNumber: myPlayerNumber || null,
+                trail: myRole === 'robber' ? myTrail : null
+            });
         };
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -377,6 +345,7 @@
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
+        // --- 2. JOIN GAME ---
         window.joinGame = (selectedRole) => {
             if (!currentUser) return;
             myRole = selectedRole;
@@ -384,7 +353,6 @@
             useHighAccuracy = true; 
             myTrail = [];
             document.getElementById('error-msg').classList.add('hidden');
-            
             showView('view-locating');
 
             if (myRole === 'robber') {
@@ -400,11 +368,8 @@
             }
 
             document.getElementById('hud-role-text').innerText = myRole;
-            const indicator = document.getElementById('hud-role-indicator');
-            indicator.className = `w-2.5 h-2.5 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
-            
-            const hint = document.getElementById('hud-hint');
-            hint.innerText = myRole === 'cop' 
+            document.getElementById('hud-role-indicator').className = `w-2.5 h-2.5 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
+            document.getElementById('hud-hint').innerText = myRole === 'cop' 
                 ? "Tap on a Robber's dot within 30m to photograph and arrest them!" 
                 : "Cops are tracking your trail! RUN!";
             
@@ -427,70 +392,56 @@
                     updateLocationOnServer(myLoc.lat, myLoc.lng);
                     startGameplay();
                 },
-                (err) => {
-                    loadSimulatedLocation();
-                },
+                (err) => { loadSimulatedLocation(); },
                 { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
             );
         };
 
+        // --- 3. ACTIVE GAMEPLAY & RTDB LISTENER ---
         const startGameplay = () => {
             showView('view-playing');
             
             if (!map) {
                 map = L.map('map', { zoomControl: false, attributionControl: false }).setView([myLoc.lat, myLoc.lng], 18);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 20
-                }).addTo(map);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
             } else {
                 map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
             }
 
             startTracking();
 
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(() => {
-                if (currentUser && myLoc && !isCaught && document.visibilityState === 'visible') {
-                    updateLocationOnServer(myLoc.lat, myLoc.lng);
-                }
-            }, 10000);
-
-            const playersRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players');
-            if (unsubscribeSnapshot) unsubscribeSnapshot();
-            
-            unsubscribeSnapshot = playersRef.onSnapshot((snapshot) => {
-                const currentPlayers = {};
+            // RTDB Listen for All Players
+            const playersRef = rtdb.ref(`games/${SHARED_GAME_ID}/players`);
+            playersRef.on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                otherPlayers = {};
                 let count = 0;
                 const now = Date.now();
-                
-                snapshot.docs.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    
-                    // OFFLINE CLEANUP: If marked offline instantly remove them. 
-                    if (docSnap.id !== currentUser.uid) {
-                        if (data.offline === true) return; 
-                        if (data.lastActive && (now - data.lastActive > 5 * 60 * 1000)) return; 
-                    }
-                    
-                    currentPlayers[docSnap.id] = data;
-                    count++;
-                    
-                    // Am I Caught?
-                    if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
-                        isCaught = true;
-                        showView('view-caught');
-                    }
 
-                    // BACKUP REQUEST LISTENER
-                    if (myRole === 'cop' && docSnap.id !== currentUser.uid && data.needsBackup) {
-                        if (data.needsBackup > lastHandledBackupTime && data.needsBackup > (now - 20000)) { 
-                            lastHandledBackupTime = data.needsBackup;
+                Object.keys(data).forEach(id => {
+                    const p = data[id];
+                    // Skip myself
+                    if (id === currentUser.uid) {
+                        if (p.isCaught && !isCaught && myRole === 'robber') {
+                            isCaught = true;
+                            showView('view-caught');
+                        }
+                        return;
+                    }
+                    
+                    otherPlayers[id] = p;
+                    count++;
+
+                    // Check Backup Requests
+                    if (myRole === 'cop' && p.needsBackup) {
+                        if (p.needsBackup > lastHandledBackupTime && p.needsBackup > (now - 20000)) { 
+                            lastHandledBackupTime = p.needsBackup;
                             playRadioSound();
                             document.getElementById('view-backup-request').classList.remove('hidden');
                             
                             document.getElementById('btn-accept-backup').onclick = () => {
                                 document.getElementById('view-backup-request').classList.add('hidden');
-                                activeBackupTarget = { lat: data.lat, lng: data.lng };
+                                activeBackupTarget = { lat: p.lat, lng: p.lng };
                                 playRadioSound(); 
                                 renderMapMarkers(); 
                             };
@@ -498,8 +449,7 @@
                     }
                 });
 
-                document.getElementById('hud-players-count').innerText = count;
-                otherPlayers = currentPlayers;
+                document.getElementById('hud-players-count').innerText = count + 1; // Me + Others
                 renderMapMarkers();
             });
         };
@@ -520,18 +470,16 @@
                         useHighAccuracy = false;
                         document.getElementById('gps-warning').classList.remove('hidden');
                         startTracking(); 
-                    } else {
-                        document.getElementById('gps-warning').classList.remove('hidden');
                     }
                 },
                 { enableHighAccuracy: useHighAccuracy, maximumAge: 5000, timeout: 10000 }
             );
         };
 
+        // --- 4. RENDER MARKERS & TRAILS ---
         const renderMapMarkers = () => {
             Object.values(mapMarkers).forEach(m => map.removeLayer(m));
             mapMarkers = {};
-            
             Object.values(trailPolylines).forEach(l => map.removeLayer(l));
             trailPolylines = {};
 
@@ -548,57 +496,49 @@
             }
 
             Object.entries(otherPlayers).forEach(([id, p]) => {
-                if (!p.lat || !p.lng) return;
-                if (p.isCaught && p.role === 'robber') return;
+                if (!p.lat || !p.lng || p.isCaught) return;
 
-                const isMe = id === currentUser?.uid;
                 const isCop = p.role === 'cop';
                 
-                // NO DISTANCE LIMIT - EVERYONE CAN SEE EVERYONE (to allow trailing)
-                let isVisible = true; 
+                const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
+                const shapeClass = isCop ? 'rounded-sm' : 'rounded-full';
 
-                if (isVisible) {
-                    const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
-                    const shapeClass = isCop ? 'rounded-sm' : 'rounded-full';
-                    const mePulse = isMe ? '<div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-50"></div>' : '';
+                const iconHtml = `<div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50 pointer-events-auto"></div>`;
+                const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
 
-                    const iconHtml = `<div class="relative w-5 h-5 ${colorClass} ${shapeClass} border-2 border-white flex items-center justify-center z-50 pointer-events-auto">${mePulse}</div>`;
-                    const customIcon = L.divIcon({ html: iconHtml, className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
+                const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
+                mapMarkers[id] = marker;
 
-                    const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
-                    mapMarkers[id] = marker;
-
-                    // SECURE TRAIL RENDERING (Cops track Robbers!)
-                    if (myRole === 'cop' && p.role === 'robber' && p.trail && Array.isArray(p.trail) && p.trail.length > 1) {
-                        const validCoords = p.trail.filter(c => c && typeof c.lat === 'number' && typeof c.lng === 'number');
-                        if (validCoords.length > 1) {
-                            const latLngs = validCoords.map(c => [c.lat, c.lng]);
-                            const trail = L.polyline(latLngs, { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '5, 8' }).addTo(map);
-                            trailPolylines[id] = trail;
-                        }
-                    }
-
-                    marker.on('click', () => {
-                        if (!isMe && myRole === 'cop' && p.role === 'robber') {
-                            const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
-                            if (dist <= CATCH_RADIUS_METERS) {
-                                targetArrestId = id;
-                                targetArrestNumber = p.playerNumber; 
-                                showView('view-arrest-modal');
-                            } else {
-                                alert(`Get closer! You are ${Math.round(dist)}m away. You must be within 30m to photograph them.`);
-                            }
-                        }
-                    });
-
-                    if (isMe && myRole === 'cop') {
-                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: CATCH_RADIUS_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
-                        mapMarkers[`${id}_circle`] = circle;
-                    }
+                // Robber Trails
+                if (myRole === 'cop' && p.role === 'robber' && p.trail && Array.isArray(p.trail) && p.trail.length > 1) {
+                    const latLngs = p.trail.map(c => [c.lat, c.lng]);
+                    const trail = L.polyline(latLngs, { color: '#ef4444', weight: 3, opacity: 0.6, dashArray: '5, 8' }).addTo(map);
+                    trailPolylines[id] = trail;
                 }
+
+                // CLICK ARREST
+                marker.on('click', () => {
+                    if (myRole === 'cop' && p.role === 'robber') {
+                        const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                        if (dist <= CATCH_RADIUS_METERS) {
+                            targetArrestId = id;
+                            targetArrestNumber = p.playerNumber; 
+                            showView('view-arrest-modal');
+                        } else {
+                            alert(`Get closer! You are ${Math.round(dist)}m away. You must be within 30m to photograph them.`);
+                        }
+                    }
+                });
             });
+
+            // My own arrest circle
+            if (myRole === 'cop' && myLoc) {
+                const circle = L.circle([myLoc.lat, myLoc.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: CATCH_RADIUS_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
+                mapMarkers['my_circle'] = circle;
+            }
         };
 
+        // --- 5. OCR ARREST LOGIC ---
         document.getElementById('camera-input').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 var reader = new FileReader();
@@ -646,8 +586,17 @@
                 const scannedText = result.data.text;
                 
                 if (scannedText.includes(targetArrestNumber.toString())) {
-                    const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(targetArrestId);
-                    await playerDocRef.set({ isCaught: true }, { merge: true });
+                    // Update RTDB to instantly jail them on the map
+                    rtdb.ref(`games/${SHARED_GAME_ID}/players/${targetArrestId}`).update({ isCaught: true });
+                    
+                    // Add permanent record to Firestore
+                    db.collection('arrest_logs').add({
+                        copId: currentUser.uid,
+                        robberId: targetArrestId,
+                        robberNumber: targetArrestNumber,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
                     alert(`✅ SUCCESS! Arrest Confirmed.\nScanned ID: ${targetArrestNumber}`);
                     closeArrestModal();
                 } else {
@@ -655,24 +604,19 @@
                     closeArrestModal();
                 }
             } catch (err) {
-                console.error("OCR Error:", err);
                 alert("Image scanner error. Please try taking the photo again.");
                 closeArrestModal();
             }
         };
 
         window.callBackup = () => {
-            if (myRole !== 'cop' || !currentUser || !myLoc) return;
-            
+            if (myRole !== 'cop' || !currentUser || !myLoc || !myRtdbRef) return;
             playRadioSound();
-            
-            const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
-            playerDocRef.set({ needsBackup: Date.now() }, { merge: true });
+            myRtdbRef.update({ needsBackup: Date.now() });
             
             const btn = document.getElementById('cop-backup-display').querySelector('button');
             btn.classList.replace('bg-blue-600', 'bg-green-600');
             btn.querySelector('span').innerText = "DISPATCHED";
-            
             setTimeout(() => {
                 btn.classList.replace('bg-green-600', 'bg-blue-600');
                 btn.querySelector('span').innerText = "BACKUP";
@@ -681,14 +625,7 @@
 
         window.returnToMenu = () => {
             if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            if (unsubscribeSnapshot) unsubscribeSnapshot();
-            
-            if (currentUser) {
-                const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
-                playerDocRef.set({ offline: true }, { merge: true });
-            }
-            
+            if (myRtdbRef) myRtdbRef.remove();
             showView('view-intro');
         };
 
