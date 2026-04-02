@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,8 +12,13 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- Tesseract JS for Image Text Recognition (OCR) -->
+    <!-- Tesseract JS for AI Image Text Recognition (OCR) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- Firebase SDKs (Compat version for Maximum Compatibility in Previews/GitHub) -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 
     <style>
         .cube-wrapper { perspective: 1000px; width: 80px; height: 80px; margin-bottom: 30px; animation: runBounce 0.4s infinite alternate ease-in-out; z-index: 10; margin-left: auto; margin-right: auto; }
@@ -152,7 +156,8 @@
         <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
         
         <button id="open-cam-btn" onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-lg mb-6 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95 transition-transform flex items-center justify-center gap-3">
-            📸 OPEN CAMERA
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+            OPEN CAMERA
         </button>
         
         <img id="camera-preview" class="hidden w-64 h-64 object-cover rounded-2xl mb-6 border-4 border-blue-500 shadow-2xl" />
@@ -164,7 +169,8 @@
         </div>
 
         <button id="confirm-arrest-btn" class="hidden bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-full font-black text-xl shadow-[0_0_30px_rgba(59,130,246,0.6)] active:scale-95 transition-transform items-center justify-center gap-3" onclick="submitArrest()">
-            🚨 SCAN & ARREST 🚨
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+            CONFIRM ARREST
         </button>
         
         <button id="cancel-arrest-btn" onclick="closeArrestModal()" class="mt-4 text-gray-500 font-bold underline p-4 uppercase tracking-widest text-sm">Cancel / Go Back</button>
@@ -180,18 +186,18 @@
         <h2 class="text-5xl font-black text-red-500 mb-2 tracking-widest uppercase">Caught!</h2>
         
         <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl mt-6 shadow-2xl max-w-sm">
-            <p class="text-white font-bold text-xl mb-3">You are locked up.</p>
+            <p class="text-white font-bold text-xl mb-3 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                You are locked up.
+            </p>
             <p class="text-gray-400 text-sm">A Cop photographed your ID and arrested you. You cannot play until the next round starts.</p>
         </div>
         <p class="text-neutral-600 text-xs mt-12 uppercase tracking-widest font-bold">(Refresh the page to leave)</p>
     </div>
 
     <!-- CORE JAVASCRIPT LOGIC -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    <script>
+        // YOUR FIREBASE CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
             authDomain: "login-71866.firebaseapp.com",
@@ -204,12 +210,13 @@
         
         const SHARED_GAME_ID = "catch-and-flee-global-server";
         
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Initialize Firebase Using Compat Scripts
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
         // --- GAME VARIABLES ---
-        const CATCH_RADIUS_METERS = 30; // 30m required to arrest
+        const CATCH_RADIUS_METERS = 30; // Must be within 30m to open camera
         
         let currentUser = null;
         let myRole = null;
@@ -226,31 +233,29 @@
         let otherPlayers = {};
         let useHighAccuracy = true; 
         
-        // Arrest Variables
         let targetArrestId = null; 
         let targetArrestNumber = null;
 
-        // Backup Variables
         let activeBackupTarget = null; 
         let backupRouteLine = null;
         let lastHandledBackupTime = 0;
 
-        // 1. OFFLINE CLEANUP: Instantly mark offline if tab closes/minimizes
+        // 1. OFFLINE CLEANUP (Instantly remove when tab hides)
         document.addEventListener('visibilitychange', () => {
             if (currentUser && myRole) {
-                const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
+                const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
                 if (document.visibilityState === 'hidden') {
-                    setDoc(playerDocRef, { offline: true }, { merge: true });
+                    playerDocRef.set({ offline: true }, { merge: true });
                 } else {
-                    setDoc(playerDocRef, { offline: false, lastActive: Date.now() }, { merge: true });
+                    playerDocRef.set({ offline: false, lastActive: Date.now() }, { merge: true });
                 }
             }
         });
         
         window.addEventListener('beforeunload', () => {
             if (currentUser) {
-                const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
-                setDoc(playerDocRef, { offline: true }, { merge: true });
+                const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
+                playerDocRef.set({ offline: true }, { merge: true });
             }
         });
 
@@ -305,15 +310,25 @@
 
         const initAuth = async () => {
             try {
-                await signInAnonymously(auth);
+                // If in Canvas env, it might provide a token. Otherwise standard anon auth.
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await auth.signInWithCustomToken(__initial_auth_token);
+                    } catch(e) {
+                        await auth.signInAnonymously(); 
+                    }
+                } else {
+                    await auth.signInAnonymously();
+                }
             } catch (err) {
+                console.error("Auth Error:", err);
                 showError("Could not connect. Ensure Anonymous Auth is ON in Firebase.");
             }
         };
         
         initAuth();
 
-        onAuthStateChanged(auth, (user) => {
+        auth.onAuthStateChanged((user) => {
             currentUser = user;
             if (user) {
                 document.getElementById('auth-loading').classList.add('hidden');
@@ -330,14 +345,14 @@
                     myTrail.push({lat: lat, lng: lng});
                 } else {
                     const lastPoint = myTrail[myTrail.length - 1];
-                    if (getDistance(lastPoint.lat, lastPoint.lng, lat, lng) > 5) { // Log every 5 meters moved
+                    if (getDistance(lastPoint.lat, lastPoint.lng, lat, lng) > 5) { 
                         myTrail.push({lat: lat, lng: lng});
                         if (myTrail.length > 50) myTrail.shift(); 
                     }
                 }
             }
 
-            const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
+            const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
             const payload = { 
                 role: myRole, 
                 lat: lat, 
@@ -349,7 +364,7 @@
             if (myPlayerNumber) payload.playerNumber = myPlayerNumber;
             if (myRole === 'robber') payload.trail = myTrail;
             
-            setDoc(playerDocRef, payload, { merge: true });
+            playerDocRef.set(payload, { merge: true });
         };
 
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -391,7 +406,7 @@
             const hint = document.getElementById('hud-hint');
             hint.innerText = myRole === 'cop' 
                 ? "Tap on a Robber's dot within 30m to photograph and arrest them!" 
-                : "Cops are searching for you! RUN!";
+                : "Cops are tracking your trail! RUN!";
             
             const loadSimulatedLocation = () => {
                 const latJitter = (Math.random() - 0.5) * 0.002;
@@ -433,7 +448,6 @@
 
             startTracking();
 
-            // HEARTBEAT: Ping server every 10 seconds so we never vanish when standing still
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 if (currentUser && myLoc && !isCaught && document.visibilityState === 'visible') {
@@ -441,21 +455,20 @@
                 }
             }, 10000);
 
-            const playersRef = collection(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players');
+            const playersRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players');
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             
-            unsubscribeSnapshot = onSnapshot(playersRef, (snapshot) => {
+            unsubscribeSnapshot = playersRef.onSnapshot((snapshot) => {
                 const currentPlayers = {};
                 let count = 0;
                 const now = Date.now();
                 
-                snapshot.forEach((docSnap) => {
+                snapshot.docs.forEach((docSnap) => {
                     const data = docSnap.data();
                     
                     // OFFLINE CLEANUP: If marked offline instantly remove them. 
                     if (docSnap.id !== currentUser.uid) {
                         if (data.offline === true) return; 
-                        // Generous 5-minute timeout for clock-drift bugs
                         if (data.lastActive && (now - data.lastActive > 5 * 60 * 1000)) return; 
                     }
                     
@@ -541,7 +554,7 @@
                 const isMe = id === currentUser?.uid;
                 const isCop = p.role === 'cop';
                 
-                // 2. ALWAYS VISIBLE DOTS (No Distance Limits on Vision)
+                // NO DISTANCE LIMIT - EVERYONE CAN SEE EVERYONE (to allow trailing)
                 let isVisible = true; 
 
                 if (isVisible) {
@@ -555,7 +568,7 @@
                     const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
                     mapMarkers[id] = marker;
 
-                    // SECURE TRAIL RENDERING
+                    // SECURE TRAIL RENDERING (Cops track Robbers!)
                     if (myRole === 'cop' && p.role === 'robber' && p.trail && Array.isArray(p.trail) && p.trail.length > 1) {
                         const validCoords = p.trail.filter(c => c && typeof c.lat === 'number' && typeof c.lng === 'number');
                         if (validCoords.length > 1) {
@@ -565,7 +578,6 @@
                         }
                     }
 
-                    // 3. ARREST CHECK LOGIC (Must be within 30m still!)
                     marker.on('click', () => {
                         if (!isMe && myRole === 'cop' && p.role === 'robber') {
                             const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
@@ -579,7 +591,6 @@
                         }
                     });
 
-                    // Draw the blue arrest zone circle around myself if I am a cop
                     if (isMe && myRole === 'cop') {
                         const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: CATCH_RADIUS_METERS, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
                         mapMarkers[`${id}_circle`] = circle;
@@ -635,8 +646,8 @@
                 const scannedText = result.data.text;
                 
                 if (scannedText.includes(targetArrestNumber.toString())) {
-                    const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', targetArrestId);
-                    await setDoc(playerDocRef, { isCaught: true }, { merge: true });
+                    const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(targetArrestId);
+                    await playerDocRef.set({ isCaught: true }, { merge: true });
                     alert(`✅ SUCCESS! Arrest Confirmed.\nScanned ID: ${targetArrestNumber}`);
                     closeArrestModal();
                 } else {
@@ -655,8 +666,8 @@
             
             playRadioSound();
             
-            const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
-            setDoc(playerDocRef, { needsBackup: Date.now() }, { merge: true });
+            const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
+            playerDocRef.set({ needsBackup: Date.now() }, { merge: true });
             
             const btn = document.getElementById('cop-backup-display').querySelector('button');
             btn.classList.replace('bg-blue-600', 'bg-green-600');
@@ -674,8 +685,8 @@
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             
             if (currentUser) {
-                const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
-                setDoc(playerDocRef, { offline: true }, { merge: true });
+                const playerDocRef = db.collection('artifacts').doc(SHARED_GAME_ID).collection('public').doc('data').collection('players').doc(currentUser.uid);
+                playerDocRef.set({ offline: true }, { merge: true });
             }
             
             showView('view-intro');
