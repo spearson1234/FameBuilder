@@ -6,7 +6,7 @@
     <title>Catch & Flee IRL</title>
 
     <!-- Tailwind CSS -->
-    <script a="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -68,6 +68,9 @@
             from { transform: translateY(-20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+        
+        .pulse-text { transition: color 0.3s ease; }
+        .pulse-text.updating { color: #10b981; transform: scale(1.1); }
     </style>
 </head>
 <body class="bg-neutral-900 text-white overflow-hidden font-sans select-none">
@@ -182,7 +185,7 @@
             <div class="flex justify-between items-stretch gap-2">
                 <!-- Role Card -->
                 <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-2.5 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-center">
-                    <div class="text-[8px] text-gray-400 uppercase tracking-widest font-bold mb-0.5">Role</div>
+                    <div class="text-[8px] text-gray-400 uppercase tracking-widest font-bold mb-0.5">Team</div>
                     <div class="flex items-center gap-2">
                         <div id="hud-role-indicator" class="w-2 h-2 rounded-full animate-pulse bg-white"></div>
                         <span id="hud-role-text" class="font-black text-sm uppercase text-white">ROLE</span>
@@ -198,6 +201,7 @@
                 <!-- Cop Backup Button (Only shown to cops) -->
                 <div id="cop-backup-display" class="hidden flex-1 pointer-events-auto">
                     <button id="btn-request-backup" class="w-full h-full bg-blue-600 hover:bg-blue-500 border border-blue-400 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] flex flex-col items-center justify-center active:scale-95 transition-all text-white py-1">
+                        <svg class="w-5 h-5 mb-0.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
                         <span class="text-[8px] uppercase tracking-widest font-black">BACKUP</span>
                     </button>
                 </div>
@@ -205,7 +209,7 @@
                 <!-- Online Count -->
                 <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-2.5 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-center">
                     <div class="text-[8px] text-gray-400 uppercase tracking-widest font-bold mb-0.5">In Game</div>
-                    <div class="font-bold text-white text-sm leading-none"><span id="hud-players-count">1</span></div>
+                    <div class="font-bold text-white text-sm leading-none pulse-text" id="hud-players-count-container"><span id="hud-players-count">1</span></div>
                 </div>
             </div>
         </div>
@@ -220,11 +224,12 @@
     <!-- VIEW: BACKUP REQUEST ALERT -->
     <div id="view-backup-request" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
         <div class="bg-neutral-900 border-2 border-blue-500 rounded-3xl p-8 w-full max-w-xs shadow-2xl">
+            <svg class="w-12 h-12 text-blue-500 mx-auto mb-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             <h3 class="text-xl font-black text-white uppercase tracking-widest mb-2">Backup Required!</h3>
             <p class="text-gray-400 text-xs mb-8">An officer needs assistance nearby.</p>
             <div class="flex flex-col gap-3">
-                <button id="btn-accept-backup" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-500 transition-all">
-                    RESPOND
+                <button id="btn-accept-backup" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_15px_rgba(59,130,246,0.6)]">
+                    RESPOND NOW
                 </button>
                 <button id="btn-ignore-backup" class="w-full bg-neutral-800 text-gray-400 font-bold py-3 rounded-xl hover:bg-neutral-700 transition-all">
                     IGNORE
@@ -298,9 +303,9 @@
         const CATCH_RADIUS_METERS = 40; 
 
         let db, auth, user = null;
-        let currentRoom = null; // Stores the active room code
+        let currentRoom = null; 
         
-        let myRole = null; // 'cop' or 'robber'
+        let myRole = null; 
         let myLoc = { lat: 0, lng: 0 };
         let myPlayerNumber = null;
         let myTrail = [];
@@ -311,15 +316,25 @@
         let mapMarkers = {};
         let trailPolylines = {};
         let otherPlayers = {};
+        let currentOnlineCount = 0;
         
         // Target tracking for arrests and backup
         let targetArrestId = null;
         let targetArrestNumber = null;
+        
+        // Backup States
         let activeBackupTarget = null;
         let lastHandledBackupTime = 0;
+        let myBackupRequestTimestamp = 0;
+        let backupNotified = false;
+        let isRespondingToBackup = false;
+        let backupPolyline = null;
+        
+        // Audio Context (must be initialized after user interaction)
+        let audioCtx = null;
 
         // ==========================================
-        // 2. DOM UTILS & NOTIFICATIONS
+        // 2. DOM UTILS, AUDIO & NOTIFICATIONS
         // ==========================================
         const showView = (id) => {
             const views = ['view-intro', 'view-room', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught', 'view-backup-request'];
@@ -343,8 +358,27 @@
             }, 3500);
         };
 
+        // Synthesize a generic radio/siren beep using Web Audio API
+        const playRadioBeep = () => {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.2);
+                osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.4);
+            } catch(e) { console.warn("Audio playback failed", e); }
+        };
+
         // ==========================================
-        // 3. FIREBASE INIT (Realtime Database)
+        // 3. FIREBASE INIT
         // ==========================================
         const app = initializeApp(firebaseConfig);
         auth = getAuth(app);
@@ -356,7 +390,6 @@
                     try {
                         await signInWithCustomToken(auth, __initial_auth_token);
                     } catch (tokenErr) {
-                        console.warn("Token mismatch, using anonymous");
                         await signInAnonymously(auth);
                     }
                 } else {
@@ -384,10 +417,8 @@
         // 4. ROOM LOGIC & GPS INIT
         // ==========================================
         
-        // 4A. Setup UI for Role/Room Selection
         const selectRole = (role) => {
             myRole = role;
-            
             const titleEl = document.getElementById('room-role-title');
             const iconEl = document.getElementById('room-role-indicator');
             
@@ -400,7 +431,6 @@
                 iconEl.className = "w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(59,130,246,0.5)] border-4 border-blue-500 bg-blue-900/30 text-blue-500";
                 iconEl.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`;
             }
-            
             showView('view-room');
         };
 
@@ -408,45 +438,39 @@
         document.getElementById('btn-select-robber').onclick = () => selectRole('robber');
         document.getElementById('btn-back-intro').onclick = () => showView('view-intro');
 
-        // 4B. Creating/Joining a Room (RTDB)
         document.getElementById('btn-create-room').onclick = async () => {
             if (!user) return;
             const newCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-            
             try {
-                // Initialize room in RTDB
                 await set(ref(db, `rooms/${newCode}/createdAt`), Date.now());
                 joinGameSession(newCode);
-            } catch(e) {
-                showNotification("Error creating room", "error");
-            }
+            } catch(e) { showNotification("Error creating room", "error"); }
         };
 
         document.getElementById('btn-join-room').onclick = async () => {
             if (!user) return;
             let code = document.getElementById('room-code-input').value.trim().toUpperCase();
             if (code.length === 0) return showNotification("Enter a Room ID", "error");
-            
             try {
                 const roomSnap = await get(ref(db, `rooms/${code}`));
                 if (roomSnap.exists()) {
                     joinGameSession(code);
-                } else {
-                    showNotification("Room not found!", "error");
-                }
-            } catch(e) {
-                showNotification("Network error checking room", "error");
-            }
+                } else { showNotification("Room not found!", "error"); }
+            } catch(e) { showNotification("Network error checking room", "error"); }
         };
 
-        // 4C. Join session and trigger GPS
         const joinGameSession = (roomCode) => {
             currentRoom = roomCode;
             
-            // Setup HUD
+            // Init Audio Context on user interaction
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
             document.getElementById('hud-room-code').innerText = roomCode;
             document.getElementById('hud-room-display').onclick = () => {
-                document.execCommand('copy'); // Fallback logic handled below
+                document.execCommand('copy'); 
                 navigator.clipboard.writeText(roomCode).then(() => {
                     showNotification("Room ID copied to clipboard!", "success");
                 }).catch(() => showNotification("Failed to copy", "error"));
@@ -462,7 +486,7 @@
 
             document.getElementById('hud-role-text').innerText = myRole.toUpperCase();
             document.getElementById('hud-role-indicator').className = `w-2 h-2 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
-            document.getElementById('hud-hint').innerHTML = myRole === 'cop' ? "Tap a red target to attempt an arrest" : "Stay away from blue dots!";
+            document.getElementById('hud-hint').innerHTML = myRole === 'cop' ? "Tap a red suspect target to attempt an arrest" : "Stay away from blue cop dots!";
 
             showView('view-locating');
             
@@ -481,7 +505,7 @@
         };
 
         // ==========================================
-        // 5. GAME STATE SYNC (Realtime DB updates)
+        // 5. GAME STATE SYNC
         // ==========================================
         const updateMyData = async () => {
             if (!user || !myRole || !currentRoom || isCaught) return;
@@ -507,9 +531,7 @@
                     trail: myRole === 'robber' ? myTrail : null,
                     lastUpdate: Date.now()
                 });
-            } catch (e) { 
-                console.error("Sync error", e); 
-            }
+            } catch (e) { console.error("Sync error", e); }
         };
 
         const calculateDistanceBasic = (lat1, lon1, lat2, lon2) => {
@@ -526,13 +548,11 @@
         const startGPS = (pos) => {
             myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             
-            // Critical: Setup onDisconnect to remove ghost markers automatically when user closes app
+            // Remove marker on closing app
             const myPlayerRef = ref(db, `rooms/${currentRoom}/players/${user.uid}`);
             onDisconnect(myPlayerRef).remove();
             
-            // Initial data push to establish connection
             updateMyData();
-
             showView('view-playing');
             initMap();
             
@@ -546,22 +566,38 @@
                 } else {
                     renderMarkers();
                 }
+
+                // Update live backup route logic if responding
+                if (isRespondingToBackup && activeBackupTarget && backupPolyline) {
+                    backupPolyline.setLatLngs([[myLoc.lat, myLoc.lng], [activeBackupTarget.lat, activeBackupTarget.lng]]);
+                    if (calculateDistanceBasic(myLoc.lat, myLoc.lng, activeBackupTarget.lat, activeBackupTarget.lng) < 20) {
+                        isRespondingToBackup = false;
+                        map.removeLayer(backupPolyline);
+                        backupPolyline = null;
+                        showNotification("Arrived at backup location.", "success");
+                        playRadioBeep();
+                    }
+                }
+
             }, (err) => {
                 document.getElementById('gps-warning').classList.remove('hidden');
-            }, { 
-                enableHighAccuracy: true, 
-                maximumAge: 0, 
-                timeout: 10000 
-            });
+            }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
 
-            // Listen to all players in CURRENT ROOM (RTDB)
+            // Listen to all active players in room
             onValue(ref(db, `rooms/${currentRoom}/players`), (snapshot) => {
                 const playersData = snapshot.val() || {};
-                
-                // Track current active keys to clean up disconnected users
                 const activeUIDs = Object.keys(playersData);
                 
-                // Remove markers for players no longer in DB
+                // Update counter visually if changed
+                if (currentOnlineCount !== activeUIDs.length) {
+                    currentOnlineCount = activeUIDs.length;
+                    const container = document.getElementById('hud-players-count-container');
+                    document.getElementById('hud-players-count').innerText = currentOnlineCount;
+                    container.classList.add('updating');
+                    setTimeout(() => container.classList.remove('updating'), 300);
+                }
+
+                // Prune dead markers
                 Object.keys(otherPlayers).forEach(uid => {
                     if (!activeUIDs.includes(uid)) {
                         if (mapMarkers[uid]) { map.removeLayer(mapMarkers[uid]); delete mapMarkers[uid]; }
@@ -572,9 +608,7 @@
 
                 activeUIDs.forEach(uid => {
                     const data = playersData[uid];
-                    
                     if (uid === user.uid) {
-                        // Check if I was caught
                         if (data.isCaught && !isCaught) { 
                             isCaught = true; 
                             showView('view-caught'); 
@@ -583,21 +617,27 @@
                         otherPlayers[uid] = data;
                     }
                 });
-                
                 renderMarkers();
-                document.getElementById('hud-players-count').innerText = Object.keys(playersData).length;
             });
 
             // Listen for backup requests
             onValue(ref(db, `rooms/${currentRoom}/backupRequest`), (snapshot) => {
                 const req = snapshot.val();
-                if (req && req.timestamp > lastHandledBackupTime && myRole === 'cop') {
-                    // Prevent viewing my own backup request
-                    if (req.uid !== user.uid) {
-                        lastHandledBackupTime = req.timestamp;
-                        activeBackupTarget = { lat: req.lat, lng: req.lng };
-                        showView('view-backup-request');
-                    }
+                if (!req) return;
+
+                // 1. If I requested backup and someone accepted it
+                if (req.uid === user.uid && req.status === 'accepted' && req.timestamp === myBackupRequestTimestamp && !backupNotified) {
+                    backupNotified = true;
+                    showNotification("A unit is en route to your location!", "success");
+                    playRadioBeep();
+                }
+
+                // 2. If someone ELSE requested backup and it is pending
+                if (req.uid !== user.uid && req.timestamp > lastHandledBackupTime && myRole === 'cop' && req.status === 'pending') {
+                    lastHandledBackupTime = req.timestamp;
+                    activeBackupTarget = { lat: req.lat, lng: req.lng };
+                    showView('view-backup-request');
+                    playRadioBeep();
                 }
             });
         };
@@ -608,7 +648,6 @@
                 map.setView([myLoc.lat, myLoc.lng], 18);
                 return;
             }
-            
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([myLoc.lat, myLoc.lng], 18);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
             setTimeout(() => { map.invalidateSize(); }, 200);
@@ -617,19 +656,14 @@
         const renderMarkers = () => {
             if (!map) return;
             
-            // My Marker
+            // Me
             const myIcon = L.divIcon({ 
                 html: `<div class="w-6 h-6 ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.5)]"><div class="absolute -inset-2 rounded-full border-2 border-white animate-ping opacity-40"></div><div class="marker-label">YOU</div></div>`, 
-                className: 'custom-leaflet-icon', 
-                iconSize: [30, 30], 
-                iconAnchor: [15, 15] 
+                className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] 
             });
-            
-            if (!mapMarkers['me']) {
-                mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: myIcon, zIndexOffset: 1000 }).addTo(map);
-            }
+            if (!mapMarkers['me']) { mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: myIcon, zIndexOffset: 1000 }).addTo(map); }
 
-            // Other Players
+            // Others (Render both teams so everyone can track each other accurately)
             Object.values(otherPlayers).forEach(p => {
                 if (p.isCaught) { 
                     if (mapMarkers[p.uid]) { map.removeLayer(mapMarkers[p.uid]); delete mapMarkers[p.uid]; }
@@ -637,23 +671,17 @@
                     return; 
                 }
                 
+                // Color coding dots so teams see their team vs enemies
                 const icon = L.divIcon({ 
                     html: `<div class="w-6 h-6 ${p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500'} rounded-full border-2 border-white flex items-center justify-center shadow-lg"><div class="marker-label">${p.role === 'cop' ? 'COP' : 'SUSPECT'}</div></div>`, 
-                    className: 'custom-leaflet-icon', 
-                    iconSize: [30, 30], 
-                    iconAnchor: [15, 15] 
+                    className: 'custom-leaflet-icon', iconSize: [30, 30], iconAnchor: [15, 15] 
                 });
                 
                 if (!mapMarkers[p.uid]) {
                     const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
-                    
-                    // Click handler for Arrests
                     m.on('click', () => {
                         if (myRole === 'cop' && p.role === 'robber') {
-                            const myLatLng = L.latLng(myLoc.lat, myLoc.lng);
-                            const targetLatLng = L.latLng(p.lat, p.lng);
-                            const dist = myLatLng.distanceTo(targetLatLng);
-                            
+                            const dist = calculateDistanceBasic(myLoc.lat, myLoc.lng, p.lat, p.lng);
                             if (dist <= CATCH_RADIUS_METERS) { 
                                 targetArrestId = p.uid; 
                                 targetArrestNumber = p.playerNumber; 
@@ -668,7 +696,7 @@
                     mapMarkers[p.uid].setLatLng([p.lat, p.lng]);
                 }
                 
-                // Draw Trails for robbers if you are a cop
+                // Cop Robber trails
                 if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
                     const pts = p.trail.map(t => [t.lat, t.lng]);
                     if (!trailPolylines[p.uid]) {
@@ -681,26 +709,44 @@
         };
 
         // ==========================================
-        // 7. ARREST & BACKUP LOGIC (RTDB Updates)
+        // 7. ARREST & BACKUP LOGIC 
         // ==========================================
 
         document.getElementById('btn-request-backup').onclick = async () => {
             if (!user || !currentRoom) return;
+            myBackupRequestTimestamp = Date.now();
+            backupNotified = false;
+            
             try {
                 await set(ref(db, `rooms/${currentRoom}/backupRequest`), {
                     uid: user.uid,
                     lat: myLoc.lat,
                     lng: myLoc.lng,
-                    timestamp: Date.now()
+                    timestamp: myBackupRequestTimestamp,
+                    status: 'pending',
+                    responderUid: null
                 });
-                showNotification("Backup requested to your location!", "success");
-            } catch(e) {
-                showNotification("Error requesting backup", "error");
-            }
+                showNotification("Backup requested! Waiting for units.", "success");
+            } catch(e) { showNotification("Error requesting backup", "error"); }
         };
 
-        document.getElementById('btn-accept-backup').onclick = () => { 
+        document.getElementById('btn-accept-backup').onclick = async () => { 
             if (activeBackupTarget && map) {
+                isRespondingToBackup = true;
+                
+                try {
+                    await update(ref(db, `rooms/${currentRoom}/backupRequest`), {
+                        status: 'accepted',
+                        responderUid: user.uid
+                    });
+                } catch(e) { }
+
+                // Draw Live navigation line to target
+                if (backupPolyline) map.removeLayer(backupPolyline);
+                backupPolyline = L.polyline([[myLoc.lat, myLoc.lng], [activeBackupTarget.lat, activeBackupTarget.lng]], {
+                    color: '#3b82f6', weight: 4, dashArray: '10, 10'
+                }).addTo(map);
+
                 map.flyTo([activeBackupTarget.lat, activeBackupTarget.lng], 19, { animate: true, duration: 1.5 }); 
             }
             showView('view-playing'); 
@@ -708,7 +754,7 @@
         
         document.getElementById('btn-ignore-backup').onclick = () => showView('view-playing');
 
-        // Arrest logic
+        // Arrest UI Logic
         const resetArrestUI = () => {
             document.getElementById('camera-preview').classList.add('hidden');
             document.getElementById('ocr-processing').classList.add('hidden');
@@ -738,7 +784,6 @@
                     await worker.terminate();
                     
                     const numbersOnly = text.replace(/\D/g, '');
-                    
                     if (numbersOnly.includes(targetArrestNumber.toString())) {
                         await finalizeArrest();
                     } else { 
@@ -757,24 +802,18 @@
             const inputVal = document.getElementById('manual-pin-input').value;
             if (inputVal === targetArrestNumber.toString()) {
                 await finalizeArrest();
-            } else {
-                showNotification("Incorrect PIN.", "error");
-            }
+            } else { showNotification("Incorrect PIN.", "error"); }
         };
 
         const finalizeArrest = async () => {
             try {
-                // Update target player to caught in RTDB
                 await update(ref(db, `rooms/${currentRoom}/players/${targetArrestId}`), { isCaught: true });
                 showNotification("TARGET BUSTED!", "success");
                 resetArrestUI();
                 showView('view-playing');
-            } catch (e) {
-                showNotification("Network error recording arrest.", "error");
-            }
+            } catch (e) { showNotification("Network error recording arrest.", "error"); }
         };
 
-        // Manual Cleanup on exit (Backup to onDisconnect)
         window.addEventListener('beforeunload', () => { 
             if (user && currentRoom && !isCaught) {
                 remove(ref(db, `rooms/${currentRoom}/players/${user.uid}`)); 
