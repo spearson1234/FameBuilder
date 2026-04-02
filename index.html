@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Catch & Flee IRL</title>
-  
+
     <!-- Suppress Tailwind CDN console warning -->
     <script>
         const originalConsoleLog = console.log;
@@ -13,19 +13,20 @@
             originalConsoleLog.apply(console, args);
         };
     </script>
-  
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-  
+
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Tesseract -->
+
+    <!-- Tesseract.js -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- Firebase (Compat versions for simple integration) -->
+
+    <!-- Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-database-compat.js"></script>
 
     <style>
@@ -35,6 +36,668 @@
         .face { position: absolute; width: 80px; height: 80px; background: linear-gradient(135deg, #2a2a2a, #0a0a0a); border: 2px solid #555; border-radius: 12px; box-shadow: inset 0 0 15px rgba(0,0,0,0.9); }
         .dot { position: absolute; width: 14px; height: 14px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(255,255,255,0.8); }
         .front { transform: rotateY(0deg) translateZ(40px); } .back { transform: rotateY(180deg) translateZ(40px); }
+        .right { transform: rotateY(90deg) translateZ(40px); } .left { transform: rotateY(-90deg) translateZ(40px); }
+        .top { transform: rotateX(90deg) translateZ(40px); } .bottom { transform: rotateX(-90deg) translateZ(40px); }
+        .tl { top: 12px; left: 12px; } .tr { top: 12px; right: 12px; } .ml { top: 31px; left: 12px; } .mr { top: 31px; right: 12px; } .c { top: 31px; left: 31px; } .bl { bottom: 12px; left: 12px; } .br { bottom: 12px; right: 12px; }
+        @keyframes spin3D { 0% { transform: rotateX(-20deg) rotateY(0deg) rotateZ(0deg); } 100% { transform: rotateX(-20deg) rotateY(360deg) rotateZ(0deg); } }
+        @keyframes runBounce { 0% { transform: translateY(0px) scaleY(0.95); } 100% { transform: translateY(-25px) scaleY(1.05); } }
+        @keyframes legSwing1 { 0% { transform: rotate(30deg) translateY(0px); } 100% { transform: rotate(-50deg) translateY(-10px); } }
+        @keyframes legSwing2 { 0% { transform: rotate(-50deg) translateY(-10px); } 100% { transform: rotate(30deg) translateY(0px); } }
+       
+        .marker-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: none;
+            z-index: 10;
+        }
+        .backup-pulse {
+            animation: backupPing 1s infinite alternate;
+        }
+        @keyframes backupPing {
+            from { transform: scale(1); filter: brightness(1); }
+            to { transform: scale(1.12); filter: brightness(1.6); }
+        }
+    </style>
+</head>
+<body class="bg-neutral-900 text-white overflow-hidden font-sans select-none">
+
+    <!-- SERVER STATUS -->
+    <div id="server-status" class="absolute top-0 left-0 w-full bg-neutral-800 text-white text-[10px] font-black text-center py-2 z-[60] uppercase tracking-widest flex items-center justify-center gap-2">
+        <svg class="animate-spin h-3 w-3 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        CONNECTING TO FIREBASE...
+    </div>
+
+    <!-- VIEW: INTRO -->
+    <div id="view-intro" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-40 pt-8">
+        <div class="z-10 flex flex-col items-center max-w-lg w-full px-6 text-center">
+            <div class="relative w-48 h-56 flex flex-col items-center justify-end mb-4">
+                <div class="cube-wrapper">
+                    <div class="cube">
+                        <div class="face front"><div class="dot c bg-red-500 shadow-[0_0_12px_rgba(239,68,68,1)]"></div></div>
+                        <div class="face back"><div class="dot tl"></div><div class="dot br"></div></div>
+                        <div class="face right"><div class="dot tl bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,1)]"></div><div class="dot c bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,1)]"></div><div class="dot br bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,1)]"></div></div>
+                        <div class="face left"><div class="dot tl"></div><div class="dot tr"></div><div class="dot bl"></div><div class="dot br"></div></div>
+                        <div class="face top"><div class="dot tl"></div><div class="dot tr"></div><div class="dot c"></div><div class="dot bl"></div><div class="dot br"></div></div>
+                        <div class="face bottom"><div class="dot tl"></div><div class="dot tr"></div><div class="dot ml"></div><div class="dot mr"></div><div class="dot bl"></div><div class="dot br"></div></div>
+                    </div>
+                </div>
+                <div class="absolute bottom-2 w-24 h-20 flex justify-center items-start z-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+                    <svg style="animation: legSwing1 0.2s infinite alternate ease-in-out; transform-origin: top center;" class="absolute w-10 h-20 text-white" viewBox="0 0 24 48"><path d="M 12 0 C 12 15, 2 25, 2 35 L -4 40" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                    <svg style="animation: legSwing2 0.2s infinite alternate ease-in-out; transform-origin: top center;" class="absolute w-10 h-20 text-gray-400" viewBox="0 0 24 48"><path d="M 12 0 C 12 15, 22 25, 22 35 L 28 40" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" /></svg>
+                </div>
+            </div>
+            <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
+            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold flex items-center justify-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                IRL Pursuit
+            </p>
+         
+            <div id="error-msg" class="hidden bg-red-900 border-2 border-red-500 text-white p-4 rounded-xl mb-6 text-xs font-mono shadow-lg max-w-sm text-left w-full overflow-auto max-h-32 flex gap-3 items-start">
+                <svg class="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span id="error-msg-text"></span>
+            </div>
+            <div id="auth-loading" class="animate-pulse text-sm text-yellow-400 font-bold tracking-widest uppercase flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle class="opacity-25" cx="12" cy="12" r="10"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Authenticating...
+            </div>
+         
+            <div id="role-buttons" class="hidden w-full flex flex-col gap-4 justify-center max-w-xs mx-auto">
+                <button onclick="joinGame('cop')" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-all">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    PLAY AS COP
+                </button>
+                <button onclick="joinGame('robber')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-6 rounded-xl active:translate-y-1 shadow-lg text-lg tracking-wider flex items-center justify-center gap-3 transition-all">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    PLAY AS ROBBER
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: LOCATING -->
+    <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 mb-6 animate-pulse"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <h2 class="text-2xl font-black mb-4 text-white tracking-widest uppercase animate-pulse">Entering Map...</h2>
+    </div>
+
+    <!-- VIEW: ACTIVE MAP -->
+    <div id="view-playing" class="hidden absolute inset-0 z-10 pt-6">
+        <div id="map" class="absolute inset-0 z-0 bg-neutral-900"></div>
+        <div id="gps-warning" class="hidden absolute top-32 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-4 py-2 rounded-full text-xs font-black z-20 animate-pulse shadow-2xl flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            INDOOR / WEAK GPS MODE
+        </div>
+
+        <div class="absolute top-8 left-4 right-4 z-10 flex flex-col gap-2 pointer-events-none">
+            <div class="flex justify-between items-stretch gap-2">
+                <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-3 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-center">
+                    <div class="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        Role
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div id="hud-role-indicator" class="w-2.5 h-2.5 rounded-full animate-pulse bg-white"></div>
+                        <span id="hud-role-text" class="font-black text-lg uppercase text-white leading-none">ROLE</span>
+                    </div>
+                </div>
+             
+                <div id="robber-id-display" class="hidden flex-1 bg-black/80 backdrop-blur-md border border-red-500/50 p-3 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.3)] pointer-events-auto flex-col items-center justify-center">
+                    <div class="text-[9px] text-red-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><circle cx="12" cy="11" r="3"></circle><path d="M17 18.5c-1.4-1-3.1-1.5-5-1.5s-3.6.5-5 1.5"></path></svg>
+                        ID Number
+                    </div>
+                    <div class="font-black text-white text-xl tracking-widest leading-none" id="my-robber-number">0000</div>
+                </div>
+                <div id="cop-backup-display" class="hidden flex-1 pointer-events-auto">
+                    <button onclick="callBackup()" class="w-full h-full bg-blue-600 hover:bg-blue-500 border border-blue-400 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] flex flex-col items-center justify-center active:scale-95 transition-all text-white">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+                        <span class="text-[9px] uppercase tracking-widest font-black mt-1">BACKUP</span>
+                    </button>
+                </div>
+             
+                <div class="flex-1 bg-black/80 backdrop-blur-md border border-neutral-700 p-3 rounded-xl shadow-xl pointer-events-auto flex flex-col justify-center items-center">
+                    <div class="text-[9px] text-gray-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Online
+                    </div>
+                    <div class="font-bold text-white text-lg leading-none"><span id="hud-players-count">1</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none w-11/12 max-w-sm">
+            <div class="bg-black/80 backdrop-blur-md border border-neutral-700 p-4 rounded-xl text-center shadow-2xl flex flex-col items-center justify-center">
+                <div id="hud-hint" class="text-xs font-medium text-white flex items-center justify-center gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BACKUP MODAL -->
+    <div id="view-backup-request" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+        <div class="bg-neutral-900 border-2 border-blue-500 rounded-2xl p-6 w-full max-w-sm shadow-[0_0_30px_rgba(59,130,246,0.4)]">
+            <div class="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            </div>
+            <h3 class="text-xl font-black text-white uppercase tracking-widest mb-4">Backup Requested!</h3>
+            <div class="flex gap-3">
+                <button id="btn-accept-backup" class="flex-1 bg-blue-600 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-500 active:scale-95 transition-all">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    ACCEPT
+                </button>
+                <button onclick="document.getElementById('view-backup-request').classList.add('hidden')" class="flex-1 bg-neutral-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-600 active:scale-95 transition-all">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    IGNORE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARREST MODAL -->
+    <div id="view-arrest-modal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+        <h2 class="text-3xl text-blue-400 font-black mb-6 animate-pulse uppercase tracking-widest flex items-center gap-3">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="12" r="3"></circle><circle cx="17" cy="12" r="3"></circle><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+            Arrest Robber
+        </h2>
+        <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden">
+        <button id="open-cam-btn" onclick="document.getElementById('camera-input').click()" class="bg-white text-black px-8 py-4 rounded-full font-black text-lg mb-6 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-105 transition-all">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            OPEN CAMERA
+        </button>
+        <img id="camera-preview" class="hidden w-64 h-64 object-cover rounded-2xl mb-6 border-4 border-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.5)]" />
+        <div id="ocr-loading" class="hidden flex-col items-center gap-4 mb-6">
+            <svg class="animate-spin h-10 w-10 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle class="opacity-25" cx="12" cy="12" r="10"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <p class="text-blue-400 font-bold tracking-widest text-sm animate-pulse">AI SCANNING ID...</p>
+        </div>
+        <button id="confirm-arrest-btn" class="hidden bg-blue-600 text-white px-10 py-5 rounded-full font-black text-lg flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(59,130,246,0.6)] hover:bg-blue-500 active:scale-95 transition-all" onclick="submitArrest()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg>
+            SCAN & ARREST
+        </button>
+        <button onclick="closeArrestModal()" class="mt-4 text-gray-400 hover:text-white font-bold py-4 px-6 uppercase tracking-widest text-xs flex items-center gap-2 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            Cancel
+        </button>
+    </div>
+
+    <!-- CAUGHT -->
+    <div id="view-caught" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+        <div class="flex items-center justify-center gap-4 mb-6 animate-bounce">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h2 class="text-5xl font-black text-red-500 mb-4 tracking-widest uppercase">CAUGHT!</h2>
+        <div class="bg-neutral-900 border border-neutral-700 p-6 rounded-2xl max-w-xs shadow-2xl">
+            <p class="text-gray-300 text-sm">A Cop scanned your ID. Better luck next round!</p>
+        </div>
+        <button onclick="location.reload()" class="mt-12 bg-white text-black font-black py-4 px-8 rounded-full uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-gray-200 transition-all">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Restart Game
+        </button>
+    </div>
+
+    <script type="module">
+        // ================================================
+        // FIREBASE CONFIG (your original)
+        // ================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
+            authDomain: "login-71866.firebaseapp.com",
+            databaseURL: "https://login-71866-default-rtdb.firebaseio.com",
+            projectId: "login-71866",
+            storageBucket: "login-71866.firebasestorage.app",
+            messagingSenderId: "434042354282",
+            appId: "1:434042354282:web:fbc98eaefe2ef6513a2813"
+        };
+
+        const SHARED_GAME_ID = "main_server_v2";
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const rtdb = firebase.database();
+
+        const CATCH_RADIUS_METERS = 30;
+
+        let currentUser = null;
+        let myRole = null;
+        let myLoc = null;
+        let myPlayerNumber = null;
+        let myTrail = [];
+        let isCaught = false;
+        let map = null;
+        let watchId = null;
+        let heartbeatInterval = null;
+        let mapMarkers = {};
+        let trailPolylines = {};
+        let otherPlayers = {};
+        let targetArrestId = null;
+        let targetArrestNumber = null;
+        let activeBackupTarget = null;
+        let lastHandledBackupTime = Date.now();
+        let myRtdbRef = null;
+
+        // Simple sound for backup
+        const playBackupSound = () => {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.6);
+            } catch (e) {}
+        };
+
+        const showView = (id) => {
+            document.querySelectorAll('#view-intro, #view-locating, #view-playing, #view-arrest-modal, #view-caught')
+                .forEach(v => v.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        };
+
+        const showError = (msg) => {
+            const el = document.getElementById('error-msg-text');
+            el.innerHTML += `<br>• ${msg}`;
+            document.getElementById('error-msg').classList.remove('hidden');
+        };
+
+        // Firebase connection status
+        rtdb.ref(".info/connected").on("value", (snap) => {
+            const statusEl = document.getElementById('server-status');
+            if (snap.val() === true) {
+                statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-300"><polyline points="20 6 9 17 4 12"></polyline></svg> LIVE: ${SHARED_GAME_ID}</div>`;
+                statusEl.className = "absolute top-0 left-0 w-full bg-green-600 text-white text-[10px] font-black py-2 z-[60] uppercase tracking-widest transition-all";
+                setTimeout(() => statusEl.classList.add('hidden'), 2500);
+            } else {
+                statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-red-300"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> RECONNECTING...</div>`;
+                statusEl.className = "absolute top-0 left-0 w-full bg-red-600 text-white text-[10px] font-black py-2 z-[60] uppercase tracking-widest transition-all";
+            }
+        });
+
+        // Auth
+        const initAuth = async () => {
+            try {
+                await auth.signInAnonymously();
+            } catch (err) {
+                showError(`AUTH FAILED: ${err.message}`);
+                console.error(err);
+            }
+        };
+        initAuth();
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-loading').classList.add('hidden');
+                document.getElementById('role-buttons').classList.remove('hidden');
+                myRtdbRef = rtdb.ref(`games/${SHARED_GAME_ID}/players/${user.uid}`);
+                myRtdbRef.onDisconnect().remove();   // Clean up when user leaves
+            }
+        });
+
+        const updateLocationOnServer = (lat, lng) => {
+            if (!currentUser || !myRtdbRef) return;
+
+            if (myRole === 'robber') {
+                if (myTrail.length === 0 || getDistance(myTrail[myTrail.length-1].lat, myTrail[myTrail.length-1].lng, lat, lng) > 6) {
+                    myTrail.push({lat, lng});
+                    if (myTrail.length > 60) myTrail.shift();
+                }
+            }
+
+            myRtdbRef.update({
+                role: myRole,
+                lat: lat,
+                lng: lng,
+                isCaught: isCaught,
+                playerNumber: myPlayerNumber || null,
+                trail: myRole === 'robber' ? myTrail : null,
+                timestamp: Date.now(),
+                needsBackup: null   // clear backup flag after update
+            }).catch(err => console.error("Sync error:", err));
+        };
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const p1 = lat1 * Math.PI / 180;
+            const p2 = lat2 * Math.PI / 180;
+            const dp = (lat2 - lat1) * Math.PI / 180;
+            const dl = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
+        window.joinGame = (selectedRole) => {
+            if (!currentUser) return;
+            myRole = selectedRole;
+            isCaught = false;
+            myTrail = [];
+            lastHandledBackupTime = Date.now();
+
+            showView('view-locating');
+
+            if (myRole === 'robber') {
+                myPlayerNumber = Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('my-robber-number').innerText = myPlayerNumber;
+                document.getElementById('robber-id-display').classList.remove('hidden');
+                document.getElementById('robber-id-display').classList.add('flex');
+            } else {
+                document.getElementById('cop-backup-display').classList.remove('hidden');
+            }
+
+            document.getElementById('hud-role-text').innerText = myRole.toUpperCase();
+            document.getElementById('hud-role-indicator').className = `w-2.5 h-2.5 rounded-full ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
+
+            document.getElementById('hud-hint').innerHTML = myRole === 'cop'
+                ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> <span class="text-blue-300">Get within 30m and tap robber to arrest</span>`
+                : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> <span class="text-red-300">Run from the cops!</span>`;
+
+            // Get location
+            if (!navigator.geolocation) {
+                startGameplay({ coords: { latitude: 51.505, longitude: -0.09 } });
+            } else {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => startGameplay(pos),
+                    (err) => {
+                        console.warn("Geolocation error:", err);
+                        startGameplay({ coords: { latitude: 51.505, longitude: -0.09 } });
+                    },
+                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
+                );
+            }
+        };
+
+        const startGameplay = (pos) => {
+            myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            updateLocationOnServer(myLoc.lat, myLoc.lng);
+            showView('view-playing');
+
+            if (!map) {
+                map = L.map('map', { 
+                    zoomControl: false, 
+                    attributionControl: false,
+                    zoom: 18,
+                    maxZoom: 20
+                }).setView([myLoc.lat, myLoc.lng], 18);
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 20
+                }).addTo(map);
+            } else {
+                map.setView([myLoc.lat, myLoc.lng], 18);
+            }
+
+            // Watch position
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (p) => {
+                        myLoc = { lat: p.coords.latitude, lng: p.coords.longitude };
+                        updateLocationOnServer(myLoc.lat, myLoc.lng);
+                        document.getElementById('gps-warning').classList.add('hidden');
+                    },
+                    () => document.getElementById('gps-warning').classList.remove('hidden'),
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+                );
+            }
+
+            // Listen to all players
+            rtdb.ref(`games/${SHARED_GAME_ID}/players`).on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                otherPlayers = {};
+                let count = 0;
+                const now = Date.now();
+
+                Object.keys(data).forEach(id => {
+                    const p = data[id];
+                    if (!p || (now - (p.timestamp || 0) > 45000)) return; // stale player
+
+                    if (id === currentUser.uid) {
+                        if (p.isCaught && !isCaught && myRole === 'robber') {
+                            isCaught = true;
+                            showView('view-caught');
+                        }
+                        count++;
+                        return;
+                    }
+
+                    // Backup request handling for cops
+                    if (myRole === 'cop' && p.role === 'cop' && p.needsBackup && p.needsBackup > lastHandledBackupTime) {
+                        lastHandledBackupTime = p.needsBackup;
+                        activeBackupTarget = { lat: p.lat, lng: p.lng };
+                        document.getElementById('view-backup-request').classList.remove('hidden');
+                        playBackupSound();
+                    }
+
+                    otherPlayers[id] = p;
+                    count++;
+                });
+
+                document.getElementById('hud-players-count').innerText = count;
+                renderMapMarkers();
+            });
+        };
+
+        const renderMapMarkers = () => {
+            // Clean up old markers
+            Object.keys(mapMarkers).forEach(id => {
+                if (id !== 'me' && id !== 'my_circle' && !otherPlayers[id] && id !== currentUser.uid) {
+                    if (mapMarkers[id]) map.removeLayer(mapMarkers[id]);
+                    delete mapMarkers[id];
+                    if (trailPolylines[id]) {
+                        map.removeLayer(trailPolylines[id]);
+                        delete trailPolylines[id];
+                    }
+                }
+            });
+
+            // My own marker
+            if (myLoc && myRole) {
+                const color = myRole === 'cop' ? '#3b82f6' : '#ef4444';
+                const shape = myRole === 'cop' ? 'rounded-sm' : 'rounded-full';
+
+                const iconHtml = `
+                    <div class="relative w-6 h-6 ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'} ${shape} border-2 border-white flex items-center justify-center shadow-lg">
+                        <div class="absolute -inset-3 rounded-full border-2 border-white animate-ping opacity-40"></div>
+                        <div class="marker-label">YOU</div>
+                    </div>`;
+
+                const customIcon = L.divIcon({
+                    html: iconHtml,
+                    className: 'custom-leaflet-icon',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+
+                if (!mapMarkers['me']) {
+                    mapMarkers['me'] = L.marker([myLoc.lat, myLoc.lng], { icon: customIcon, zIndexOffset: 2000 }).addTo(map);
+                } else {
+                    mapMarkers['me'].setLatLng([myLoc.lat, myLoc.lng]);
+                }
+
+                if (myRole === 'cop') {
+                    if (!mapMarkers['my_circle']) {
+                        mapMarkers['my_circle'] = L.circle([myLoc.lat, myLoc.lng], {
+                            color: '#3b82f6',
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.12,
+                            radius: CATCH_RADIUS_METERS
+                        }).addTo(map);
+                    } else {
+                        mapMarkers['my_circle'].setLatLng([myLoc.lat, myLoc.lng]);
+                    }
+                }
+            }
+
+            // Other players
+            Object.entries(otherPlayers).forEach(([id, p]) => {
+                if (!p.lat || !p.lng || p.isCaught) {
+                    if (mapMarkers[id]) {
+                        map.removeLayer(mapMarkers[id]);
+                        delete mapMarkers[id];
+                    }
+                    return;
+                }
+
+                const isTeammate = p.role === myRole;
+                const label = p.role === 'cop' ? 'COP' : `ID: ${p.playerNumber || '???'}`;
+                const colorClass = p.role === 'cop' ? 'bg-blue-500' : 'bg-red-500';
+                const shapeClass = p.role === 'cop' ? 'rounded-sm' : 'rounded-full';
+                const pulse = (p.needsBackup && Date.now() - p.needsBackup < 20000) ? 'backup-pulse' : '';
+
+                const iconHtml = `
+                    <div class="relative w-6 h-6 ${colorClass} ${shapeClass} ${pulse} border-2 border-white flex items-center justify-center shadow-lg">
+                        <div class="marker-label ${isTeammate ? 'text-green-400' : 'text-white'}">
+                            ${isTeammate ? '[TEAM] ' : ''}${label}
+                        </div>
+                    </div>`;
+
+                const customIcon = L.divIcon({
+                    html: iconHtml,
+                    className: 'custom-leaflet-icon',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+
+                if (!mapMarkers[id]) {
+                    const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
+
+                    marker.on('click', () => {
+                        if (myRole === 'cop' && p.role === 'robber') {
+                            const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
+                            if (dist <= CATCH_RADIUS_METERS + 5) {  // small buffer
+                                targetArrestId = id;
+                                targetArrestNumber = p.playerNumber;
+                                showView('view-arrest-modal');
+                            } else {
+                                alert(`Too far (${Math.round(dist)}m). Get closer!`);
+                            }
+                        }
+                    });
+
+                    mapMarkers[id] = marker;
+                } else {
+                    mapMarkers[id].setLatLng([p.lat, p.lng]);
+                    mapMarkers[id].setIcon(customIcon);
+                }
+
+                // Robber trail for cops
+                if (myRole === 'cop' && p.role === 'robber' && p.trail && p.trail.length > 1) {
+                    const coords = p.trail.map(c => [c.lat, c.lng]);
+                    if (!trailPolylines[id]) {
+                        trailPolylines[id] = L.polyline(coords, { 
+                            color: '#ef4444', 
+                            weight: 3.5, 
+                            opacity: 0.55,
+                            dashArray: '6, 8'
+                        }).addTo(map);
+                    } else {
+                        trailPolylines[id].setLatLngs(coords);
+                    }
+                }
+            });
+        };
+
+        // Backup
+        window.callBackup = () => {
+            if (myRole !== 'cop' || !myRtdbRef) return;
+            myRtdbRef.update({ needsBackup: Date.now() });
+
+            const btn = document.querySelector('#cop-backup-display button');
+            const orig = btn.innerHTML;
+            btn.innerHTML = `<span class="text-[9px] uppercase tracking-widest font-black">BACKUP DISPATCHED</span>`;
+            btn.classList.replace('bg-blue-600', 'bg-green-600');
+
+            setTimeout(() => {
+                btn.classList.replace('bg-green-600', 'bg-blue-600');
+                btn.innerHTML = orig;
+            }, 5500);
+        };
+
+        // Arrest modal
+        document.getElementById('camera-input').addEventListener('change', function(e) {
+            if (!e.target.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const preview = document.getElementById('camera-preview');
+                preview.src = evt.target.result;
+                preview.classList.remove('hidden');
+                document.getElementById('confirm-arrest-btn').classList.remove('hidden');
+                document.getElementById('confirm-arrest-btn').classList.add('flex');
+                document.getElementById('open-cam-btn').classList.add('hidden');
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        });
+
+        window.closeArrestModal = () => {
+            targetArrestId = null;
+            targetArrestNumber = null;
+            document.getElementById('camera-preview').classList.add('hidden');
+            document.getElementById('confirm-arrest-btn').classList.add('hidden');
+            document.getElementById('confirm-arrest-btn').classList.remove('flex');
+            document.getElementById('open-cam-btn').classList.remove('hidden');
+            document.getElementById('ocr-loading').classList.add('hidden');
+            document.getElementById('camera-input').value = '';
+            showView('view-playing');
+        };
+
+        window.submitArrest = async () => {
+            if (!targetArrestId || !targetArrestNumber) return;
+
+            document.getElementById('confirm-arrest-btn').classList.add('hidden');
+            document.getElementById('ocr-loading').classList.remove('hidden');
+
+            try {
+                const result = await Tesseract.recognize(
+                    document.getElementById('camera-preview').src,
+                    'eng',
+                    { logger: m => console.log(m) }
+                );
+
+                const text = result.data.text.toLowerCase().trim();
+                const numberStr = targetArrestNumber.toString();
+
+                if (text.includes(numberStr)) {
+                    rtdb.ref(`games/${SHARED_GAME_ID}/players/${targetArrestId}`).update({ isCaught: true });
+                    alert(`✅ ARREST SUCCESSFUL! ID ${targetArrestNumber} caught.`);
+                } else {
+                    alert(`❌ ID MISMATCH. Scanned: "${text}"\nExpected: ${targetArrestNumber}\nTry again.`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("OCR failed. Make sure the ID number is clearly visible.");
+            }
+
+            closeArrestModal();
+        };
+
+        // Accept backup
+        document.getElementById('btn-accept-backup').addEventListener('click', () => {
+            if (activeBackupTarget && map) {
+                map.flyTo([activeBackupTarget.lat, activeBackupTarget.lng], 19, { duration: 1.2 });
+                document.getElementById('view-backup-request').classList.add('hidden');
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (myRtdbRef) myRtdbRef.remove();
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        });
+    </script>
+</body>
+</html>        .front { transform: rotateY(0deg) translateZ(40px); } .back { transform: rotateY(180deg) translateZ(40px); }
         .right { transform: rotateY(90deg) translateZ(40px); } .left { transform: rotateY(-90deg) translateZ(40px); }
         .top { transform: rotateX(90deg) translateZ(40px); } .bottom { transform: rotateX(-90deg) translateZ(40px); }
         .tl { top: 12px; left: 12px; } .tr { top: 12px; right: 12px; } .ml { top: 31px; left: 12px; } .mr { top: 31px; right: 12px; } .c { top: 31px; left: 31px; } .bl { bottom: 12px; left: 12px; } .br { bottom: 12px; right: 12px; }
