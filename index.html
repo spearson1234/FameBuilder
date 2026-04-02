@@ -33,17 +33,8 @@
 </head>
 <body class="bg-neutral-900 text-white overflow-hidden font-sans select-none">
 
-    <!-- VIEW: PC BLOCKER -->
-    <div id="view-pc-block" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center p-6 text-center z-50">
-        <h1 class="text-5xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-6 drop-shadow-lg">CATCH & FLEE</h1>
-        <div class="bg-red-900/40 border-2 border-red-600 p-6 rounded-2xl max-w-md shadow-[0_0_30px_rgba(220,38,38,0.4)]">
-            <h2 class="text-2xl font-bold mb-2 text-red-400">MOBILE ONLY</h2>
-            <p class="text-gray-300">This is a real-life physical pursuit game requiring GPS tracking. You cannot play this on a desktop computer.<br/><br/><strong>Please open this link on your mobile phone to play.</strong></p>
-        </div>
-    </div>
-
     <!-- VIEW: INTRO MENU -->
-    <div id="view-intro" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center z-40">
+    <div id="view-intro" class="absolute inset-0 bg-black flex flex-col items-center justify-center z-40">
         <div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
             <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-600 rounded-full mix-blend-screen filter blur-3xl animate-pulse"></div>
             <div class="absolute top-1/3 right-1/4 w-64 h-64 bg-red-600 rounded-full mix-blend-screen filter blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
@@ -69,7 +60,9 @@
             </div>
 
             <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
-            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
+            
+            <p class="text-gray-400 mb-2 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
+            <p class="text-gray-500 mb-8 text-sm">📍 You must allow Location Sharing to play!</p>
             
             <div id="error-msg" class="hidden bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium shadow-lg max-w-sm"></div>
 
@@ -85,13 +78,18 @@
     <!-- VIEW: LOCATING -->
     <div id="view-locating" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center text-center z-40 p-6">
         <h2 class="text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-red-400 animate-pulse">ACQUIRING SATELLITE LOCK...</h2>
-        <p class="text-gray-400 text-sm mt-4 max-w-xs">Connecting to GPS. Ensure your phone's location services are turned on.</p>
+        <p class="text-gray-400 text-sm mt-4 max-w-xs">Connecting to GPS. This may take a moment...</p>
     </div>
 
     <!-- VIEW: ACTIVE MAP -->
     <div id="view-playing" class="hidden absolute inset-0 z-10">
         <div id="map" class="absolute inset-0 z-0"></div>
         
+        <!-- GPS WARNING BANNER (Only shows if GPS is taking too long) -->
+        <div id="gps-warning" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-5 py-2 rounded-full text-xs font-black z-20 animate-pulse shadow-lg whitespace-nowrap tracking-wider">
+            WAITING FOR GPS SIGNAL...
+        </div>
+
         <!-- HUD -->
         <div class="absolute top-4 left-4 right-4 z-10 flex flex-col gap-2 pointer-events-none">
             <div class="flex justify-between items-start">
@@ -132,7 +130,6 @@
         import { getFirestore, collection, onSnapshot, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- GITHUB CONFIGURATION ---
-        // Inserted your provided personal Firebase credentials here:
         const githubFirebaseConfig = {
             apiKey: "AIzaSyAHSW4ettEHj3Y562zYSI_n0Z1OwFaGsgw",
             authDomain: "login-71866.firebaseapp.com",
@@ -143,7 +140,6 @@
             appId: "1:434042354282:web:fbc98eaefe2ef6513a2813"
         }; 
         
-        // Auto-detect environments (Canvas vs GitHub)
         const isCanvas = typeof __firebase_config !== 'undefined';
         const firebaseConfig = isCanvas ? JSON.parse(__firebase_config) : githubFirebaseConfig;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -163,12 +159,12 @@
         let map = null;
         let watchId = null;
         let unsubscribeSnapshot = null;
-        let mapMarkers = {}; // Keep track of rendered players
+        let mapMarkers = {}; 
         let otherPlayers = {};
 
         // --- DOM Elements ---
         const showView = (id) => {
-            ['view-pc-block', 'view-intro', 'view-locating', 'view-playing', 'view-caught'].forEach(v => {
+            ['view-intro', 'view-locating', 'view-playing', 'view-caught'].forEach(v => {
                 document.getElementById(v).classList.add('hidden');
             });
             document.getElementById(id).classList.remove('hidden');
@@ -180,37 +176,28 @@
             errEl.classList.remove('hidden');
         };
 
-        // --- 0. Check Mobile ---
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        // --- 1. Auth Init ---
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Error:", err);
+            }
+        };
         
-        if (!isMobile) {
-            showView('view-pc-block');
-        } else {
-            showView('view-intro');
-            
-            // --- 1. Auth Init ---
-            const initAuth = async () => {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (err) {
-                    console.error("Auth Error:", err);
-                }
-            };
-            initAuth();
+        initAuth();
 
-            onAuthStateChanged(auth, (user) => {
-                currentUser = user;
-                if (user) {
-                    document.getElementById('auth-loading').classList.add('hidden');
-                    document.getElementById('role-buttons').classList.remove('hidden');
-                }
-            });
-        }
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('auth-loading').classList.add('hidden');
+                document.getElementById('role-buttons').classList.remove('hidden');
+            }
+        });
 
         // Haversine Distance
         function getDistance(lat1, lon1, lat2, lon2) {
@@ -229,7 +216,7 @@
             setDoc(playerDocRef, { role: role, lat: lat, lng: lng, isCaught: isCaught, lastActive: Date.now() }, { merge: true });
         };
 
-        // --- 2. JOIN GAME LOGIC (Made Global for HTML buttons) ---
+        // --- 2. JOIN GAME LOGIC (UNBLOCKABLE) ---
         window.joinGame = (selectedRole) => {
             if (!currentUser) return;
             myRole = selectedRole;
@@ -238,12 +225,14 @@
             showView('view-locating');
 
             if (!navigator.geolocation) {
-                showError("Device does not support GPS Geolocation.");
-                showView('view-intro');
+                // Device straight up doesn't have GPS. Let them in anyway with default loc.
+                console.warn("No geolocation API.");
+                myLoc = { lat: 0, lng: 0 }; 
+                startGameplay(true);
                 return;
             }
 
-            // Setup HUD
+            // Setup HUD text
             document.getElementById('hud-role-text').innerText = myRole;
             const indicator = document.getElementById('hud-role-indicator');
             indicator.className = `w-3 h-3 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
@@ -254,56 +243,75 @@
                 ? "Physically patrol the area. Robbers only appear on radar when within 200m!" 
                 : "RUN! Cops are tracking you IRL. Stay out of their 30m catch radius!";
 
-            // Get initial location
+            // Try to get location, but give it a short timeout so they don't get stuck looking at the "Locating" screen forever
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
+                    // Success!
                     myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     updateLocationOnServer(myLoc.lat, myLoc.lng, myRole);
-                    startGameplay();
+                    startGameplay(false);
                 },
                 (err) => {
-                    showError("GPS access blocked! You MUST allow location permissions in your browser.");
-                    showView('view-intro');
+                    // Failed or took too long (user might have permissions acting weird)
+                    // Let them into the game anyway, show a warning, and wait for `watchPosition` to catch up!
+                    console.warn("Initial GPS fetch failed or timed out. Dropping into map anyway...", err);
+                    myLoc = { lat: 51.505, lng: -0.09 }; // Temporary default location (London)
+                    startGameplay(true); // true = show warning banner
                 },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 } // Only wait 5 seconds max before forcing entry
             );
         };
 
         window.returnToMenu = () => {
             if (watchId) navigator.geolocation.clearWatch(watchId);
             if (unsubscribeSnapshot) unsubscribeSnapshot();
+            document.getElementById('gps-warning').classList.add('hidden');
             showView('view-intro');
         };
 
         // --- 3. ACTIVE GAMEPLAY LOGIC ---
-        const startGameplay = () => {
+        const startGameplay = (isWaitingForGps) => {
             showView('view-playing');
             
+            if (isWaitingForGps) {
+                document.getElementById('gps-warning').classList.remove('hidden');
+            } else {
+                document.getElementById('gps-warning').classList.add('hidden');
+            }
+
             // Initialize Map
             if (!map) {
                 map = L.map('map', { zoomControl: false }).setView([myLoc.lat, myLoc.lng], 18);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap', maxZoom: 20
                 }).addTo(map);
+            } else {
+                map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
             }
-            map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
 
-            // Start GPS Tracking
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    updateLocationOnServer(myLoc.lat, myLoc.lng);
-                    map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
-                    checkCatchLogic(); // check immediately on move
-                },
-                (err) => {
-                    showError("Lost GPS connection! Check your location settings.");
-                    returnToMenu();
-                },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-            );
+            // Start Continuous GPS Tracking
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        updateLocationOnServer(myLoc.lat, myLoc.lng);
+                        map.panTo(new L.LatLng(myLoc.lat, myLoc.lng));
+                        
+                        // Hide the warning banner once the phone finally gets a lock!
+                        document.getElementById('gps-warning').classList.add('hidden');
+                        
+                        checkCatchLogic(); 
+                    },
+                    (err) => {
+                        console.warn("Watch position error/timeout:", err);
+                        // Don't kick them out, just show the warning banner
+                        document.getElementById('gps-warning').classList.remove('hidden');
+                    },
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                );
+            }
 
-            // Listen to other players
+            // Listen to other players in real-time
             const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
             unsubscribeSnapshot = onSnapshot(playersRef, (snapshot) => {
                 const currentPlayers = {};
@@ -311,7 +319,7 @@
                 
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
-                    if (data.lastActive && (Date.now() - data.lastActive > 15 * 60 * 1000)) return; // ignore inactive
+                    if (data.lastActive && (Date.now() - data.lastActive > 15 * 60 * 1000)) return; // ignore inactive (>15m)
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
@@ -330,7 +338,8 @@
         };
 
         const checkCatchLogic = () => {
-            if (myRole !== 'robber' || isCaught || !myLoc) return;
+            // Can't get caught if we don't have a real location yet
+            if (myRole !== 'robber' || isCaught || !myLoc || document.getElementById('gps-warning').classList.contains('hidden') === false) return;
             
             const cops = Object.values(otherPlayers).filter(p => p.role === 'cop' && p.lat && p.lng);
             for (let cop of cops) {
@@ -356,8 +365,8 @@
                 const isCop = p.role === 'cop';
                 let isVisible = true;
 
-                // Secrecy Logic
-                if (!isMe && myRole === 'cop' && p.role === 'robber') {
+                // Secrecy Logic: Cops can't see robbers far away
+                if (!isMe && myRole === 'cop' && p.role === 'robber' && myLoc) {
                     if (getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng) > COP_RADAR_METERS) {
                         isVisible = false;
                     }
@@ -374,6 +383,7 @@
                     const marker = L.marker([p.lat, p.lng], { icon: customIcon }).addTo(map);
                     mapMarkers[id] = marker;
 
+                    // Draw the blue radar circle around myself if I am a cop
                     if (isMe && myRole === 'cop') {
                         const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: COP_RADAR_METERS, weight: 1, dashArray: '5, 10' }).addTo(map);
                         mapMarkers[`${id}_circle`] = circle;
