@@ -208,26 +208,21 @@
                     <span class="text-emerald-500 font-black tracking-widest uppercase">DISPATCH HQ</span>
                 </div>
                 
-                <div class="flex-1 flex flex-col gap-4 p-4 overflow-y-auto">
-                    <!-- Dispatch Voice Radio -->
-                    <div class="bg-black/50 border border-blue-500/30 rounded-xl p-3 shadow-inner">
-                        <div class="flex items-center gap-2 mb-3">
-                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                            <h3 class="text-blue-500 font-bold text-[10px] tracking-widest uppercase">Live Voice Radio (To Units)</h3>
-                        </div>
-                        <button id="btn-dispatch-ptt" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer select-none border border-blue-400 shadow-sm active:scale-95">
-                            <span id="text-dispatch-ptt" class="text-xs uppercase tracking-widest font-black pointer-events-none">Hold To Speak</span>
-                        </button>
-                    </div>
-
-                    <!-- Radio Logs -->
+                <div class="flex-1 flex flex-col gap-4 p-4 overflow-hidden">
+                    
+                    <!-- Shared Radio Logs (Cops & Dispatch) -->
                     <div class="flex-1 bg-black/50 border border-emerald-500/30 rounded-xl flex flex-col overflow-hidden shadow-inner min-h-[200px]">
                         <div class="bg-emerald-900/20 p-2.5 border-b border-emerald-500/20 flex items-center gap-2">
                             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                            <h3 class="text-emerald-400 font-bold text-[10px] tracking-widest uppercase">Incoming Comms Log</h3>
+                            <h3 class="text-emerald-400 font-bold text-[10px] tracking-widest uppercase">Unit Comms Log</h3>
                         </div>
-                        <div id="dispatch-radio-log" class="flex-1 p-3 overflow-y-auto flex flex-col gap-2 text-sm">
+                        <div id="dispatch-radio-log" class="flex-1 p-3 overflow-y-auto flex flex-col gap-2 text-sm scroll-smooth">
                             <div class="text-gray-600 text-xs italic text-center mt-4">Waiting for transmissions...</div>
+                        </div>
+                        <!-- Dispatch Message Input -->
+                        <div class="p-2 bg-black/80 border-t border-emerald-500/20 flex gap-2">
+                            <input type="text" id="dispatch-reply-input" class="flex-1 bg-neutral-900 text-white text-xs p-2 rounded-lg border border-neutral-700 focus:border-emerald-500 focus:outline-none" placeholder="Message units...">
+                            <button id="btn-dispatch-reply" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold uppercase transition-colors active:scale-95">Send</button>
                         </div>
                     </div>
                     
@@ -244,7 +239,7 @@
                     </div>
                     
                     <!-- Hint -->
-                    <div class="bg-blue-900/30 text-blue-300 text-[10px] font-bold p-3 rounded-lg border border-blue-500/20 uppercase tracking-wider text-center mt-2">
+                    <div class="bg-blue-900/30 text-blue-300 text-[10px] font-bold p-3 rounded-lg border border-blue-500/20 uppercase tracking-wider text-center mt-auto">
                         <span class="animate-pulse inline-block mr-1">📍</span> CLICK MAP TO SEND PING TO COPS
                     </div>
                 </div>
@@ -274,10 +269,10 @@
             
             <!-- COP FOOTER -->
             <div id="cop-footer-actions" class="hidden gap-3 h-14 max-w-2xl mx-auto w-full">
-                <!-- Radio (Updated to properly handle Mobile Touch 'Hold') -->
-                <button id="btn-radio-dispatch" class="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-xl flex items-center justify-center gap-2 transition-colors text-white select-none shadow-sm touch-none">
-                    <svg class="w-5 h-5 text-gray-400 pointer-events-none" id="icon-mic" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                    <span class="text-[10px] md:text-xs uppercase tracking-widest font-black pointer-events-none" id="text-mic">HOLD & SPEAK</span>
+                <!-- Message HQ -->
+                <button onclick="document.getElementById('view-message-modal').classList.remove('hidden')" class="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 rounded-xl flex items-center justify-center gap-2 transition-colors text-white active:scale-95 shadow-sm">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <span class="text-[10px] md:text-xs uppercase tracking-widest font-black">MSG HQ</span>
                 </button>
                 <!-- Backup -->
                 <button id="btn-request-backup" class="flex-1 bg-blue-600 hover:bg-blue-500 border border-blue-400 rounded-xl flex items-center justify-center gap-2 transition-all text-white active:scale-95 shadow-sm shadow-blue-900/50">
@@ -320,6 +315,35 @@
                 </button>
                 <button id="btn-ignore-backup" class="w-full bg-neutral-800 text-gray-400 font-bold py-3 rounded-xl hover:bg-neutral-700 transition-all">
                     IGNORE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: MESSAGE HQ MODAL -->
+    <div id="view-message-modal" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-md">
+        <div class="w-full max-w-md bg-neutral-900 border border-emerald-500/30 rounded-2xl flex flex-col h-[80vh] shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-emerald-900/40 p-4 border-b border-emerald-500/30 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <h2 class="text-emerald-400 font-black tracking-widest uppercase text-sm">Comms Log</h2>
+                </div>
+                <button onclick="document.getElementById('view-message-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Log -->
+            <div id="cop-comms-log" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-left text-sm bg-black/50 scroll-smooth">
+                <div class="text-gray-600 text-xs italic text-center mt-4">Connecting to HQ...</div>
+            </div>
+
+            <!-- Input -->
+            <div class="p-3 bg-neutral-900 border-t border-neutral-800 flex gap-2">
+                <input type="text" id="cop-msg-input" class="flex-1 bg-black border border-neutral-700 text-white rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 text-sm" placeholder="Send update...">
+                <button id="btn-send-cop-msg" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl transition-transform active:scale-95 text-xs uppercase tracking-wider">
+                    Send
                 </button>
             </div>
         </div>
@@ -416,7 +440,6 @@
         let unsubPings = null;
         let unsubAlerts = null;
         let unsubRadio = null;
-        let unsubVoice = null;
         
         let activeBackupTarget = null;
         let lastHandledBackupTime = 0;
@@ -427,22 +450,18 @@
         
         let audioCtx = null;
         let activeDispatchPingMarker = null;
-
-        // Speech Recognition & Real Audio setup
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        let isRecording = false;
-
-        let voiceRecorder = null;
-        let voiceChunks = [];
-        let lastPlayedVoiceTime = Date.now();
+        let lastMessageTime = Date.now();
 
         // ==========================================
         // 2. DOM UTILS, AUDIO & NOTIFICATIONS
         // ==========================================
         const showView = (id) => {
-            const views = ['view-intro', 'view-room', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught', 'view-backup-request'];
-            views.forEach(v => document.getElementById(v).classList.add('hidden'));
+            const views = ['view-intro', 'view-room', 'view-locating', 'view-playing', 'view-arrest-modal', 'view-caught', 'view-backup-request', 'view-message-modal'];
+            views.forEach(v => {
+                if (v !== 'view-message-modal') {
+                    document.getElementById(v).classList.add('hidden');
+                }
+            });
             document.getElementById(id).classList.remove('hidden');
             
             // Fix map sizing for flex layout
@@ -658,7 +677,6 @@
                 
                 showView('view-locating');
                 startMobileGPS();
-                initSpeechRecognition();
 
             } else if (myRole === 'dispatch') {
                 document.getElementById('dispatch-ui').classList.remove('hidden');
@@ -671,13 +689,11 @@
                         myLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                         initMap();
                         startDataListeners();
-                        initDispatchRealRadio(); 
                     });
                 } else {
                     myLoc = { lat: 51.505, lng: -0.09 }; // default london
                     initMap();
                     startDataListeners();
-                    initDispatchRealRadio(); 
                 }
             }
         };
@@ -794,7 +810,6 @@
             if (unsubPings) unsubPings();
             if (unsubAlerts) unsubAlerts();
             if (unsubRadio) unsubRadio();
-            if (unsubVoice) unsubVoice();
             
             if (myRole !== 'dispatch') {
                 const myPlayerRef = ref(db, `rooms/${currentRoom}/players/${mySessionId}`);
@@ -924,52 +939,58 @@
                 }
             });
 
-            // LISTEN: Radio Log (For Dispatch)
+            // LISTEN: Text Messaging (For Cops & Dispatch)
             unsubRadio = onValue(ref(db, `rooms/${currentRoom}/radioLog`), (snapshot) => {
-                if (myRole !== 'dispatch') return;
+                if (myRole === 'robber') return; // Robbers don't see this
                 const logs = snapshot.val() || {};
-                const logContainer = document.getElementById('dispatch-radio-log');
-                logContainer.innerHTML = '';
+                const dispatchLogContainer = document.getElementById('dispatch-radio-log');
+                const copLogContainer = document.getElementById('cop-comms-log');
                 
-                const sortedKeys = Object.keys(logs).sort((a,b) => logs[a].timestamp - logs[b].timestamp).slice(-20); // Keep last 20
+                let htmlContent = '';
+                const sortedKeys = Object.keys(logs).sort((a,b) => logs[a].timestamp - logs[b].timestamp).slice(-50); 
+                
                 if (sortedKeys.length === 0) {
-                    logContainer.innerHTML = '<div class="text-gray-500 text-xs italic text-center mt-4">Waiting for transmissions...</div>';
-                    return;
+                    htmlContent = '<div class="text-gray-500 text-xs italic text-center mt-4">Waiting for transmissions...</div>';
+                } else {
+                    sortedKeys.forEach(k => {
+                        const l = logs[k];
+                        const time = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        const isDispatch = l.copId === 'DISPATCH';
+                        const senderName = isDispatch ? 'HQ DISPATCH' : `UNIT ${l.copId.substring(0,4)}`;
+                        const colorClass = isDispatch ? 'text-blue-400' : 'text-emerald-500';
+                        const bgClass = isDispatch ? 'bg-blue-900/20 border-blue-500/30' : 'bg-black/50 border-emerald-500/20';
+
+                        htmlContent += `
+                            <div class="${bgClass} border p-2 rounded-lg text-xs text-white flex flex-col gap-1 shadow-sm">
+                                <span class="text-[9px] ${colorClass} font-mono font-black">[${time}] ${senderName}</span>
+                                <span class="font-bold break-words">${l.text}</span>
+                            </div>
+                        `;
+                    });
                 }
 
-                sortedKeys.forEach(k => {
-                    const l = logs[k];
-                    const time = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    logContainer.innerHTML += `
-                        <div class="bg-black/50 border border-emerald-500/20 p-2 rounded text-xs text-emerald-100 flex flex-col gap-1">
-                            <span class="text-[9px] text-emerald-500 font-mono">[${time}] UNIT ${l.copId.substring(0,4)}</span>
-                            <span class="font-bold">"${l.text}"</span>
-                        </div>
-                    `;
-                });
-                logContainer.scrollTop = logContainer.scrollHeight;
-                playRadioBeep(); // Beep dispatch when new comms come in
-            });
+                if (myRole === 'dispatch' && dispatchLogContainer) {
+                    dispatchLogContainer.innerHTML = htmlContent;
+                    dispatchLogContainer.scrollTop = dispatchLogContainer.scrollHeight;
+                } else if (myRole === 'cop' && copLogContainer) {
+                    copLogContainer.innerHTML = htmlContent;
+                    copLogContainer.scrollTop = copLogContainer.scrollHeight;
+                }
 
-            // LISTEN: Actual Voice Radio (For Cops)
-            unsubVoice = onValue(ref(db, `rooms/${currentRoom}/voiceComms`), (snapshot) => {
-                if (myRole !== 'cop') return;
-                const comms = snapshot.val();
-                if (!comms) return;
-
-                // Find newest audio transmission
-                const keys = Object.keys(comms).sort((a,b) => comms[a].timestamp - comms[b].timestamp);
-                const latestKey = keys[keys.length - 1];
-                const latestComm = comms[latestKey];
-
-                // Play if it's new and within the last 30 seconds
-                if (latestComm.timestamp > lastPlayedVoiceTime && Date.now() - latestComm.timestamp < 30000) {
-                    lastPlayedVoiceTime = latestComm.timestamp;
+                if (sortedKeys.length > 0) {
+                    const newestKey = sortedKeys[sortedKeys.length - 1];
+                    const newestComm = logs[newestKey];
                     
-                    const audio = new Audio(latestComm.audio);
-                    audio.play().catch(e => console.warn("Browser blocked audio autoplay", e));
-                    
-                    showNotification("DISPATCH: Live Voice Transmission", "info");
+                    // Play beep for new incoming text message
+                    if (newestComm.timestamp > lastMessageTime && (Date.now() - newestComm.timestamp) < 30000) {
+                        lastMessageTime = newestComm.timestamp;
+                        playRadioBeep();
+                        
+                        // Notify cop if message is from dispatch and modal is hidden
+                        if (myRole === 'cop' && newestComm.copId === 'DISPATCH' && document.getElementById('view-message-modal').classList.contains('hidden')) {
+                            showNotification("HQ: " + newestComm.text, "info");
+                        }
+                    }
                 }
             });
         };
@@ -1066,161 +1087,32 @@
         };
 
         // ==========================================
-        // 7. RADIO, DISPATCH ALERTS & BACKUP
+        // 7. DISPATCH ALERTS & BACKUP
         // ==========================================
 
-        // Initialize Dispatch Real Voice Walkie-Talkie
-        const initDispatchRealRadio = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                voiceRecorder = new MediaRecorder(stream);
+        // Dispatch Send Message to Cops (Green Log)
+        if (document.getElementById('btn-dispatch-reply')) {
+            document.getElementById('btn-dispatch-reply').onclick = async () => {
+                const input = document.getElementById('dispatch-reply-input');
+                const txt = input.value.trim();
+                if (!txt) return;
                 
-                voiceRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) voiceChunks.push(e.data);
-                };
-                
-                voiceRecorder.onstop = () => {
-                    // Let browser determine optimal mimeType
-                    const audioBlob = new Blob(voiceChunks);
-                    voiceChunks = [];
-                    
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result;
-                        try {
-                            await push(ref(db, `rooms/${currentRoom}/voiceComms`), {
-                                sender: 'dispatch',
-                                audio: base64Audio,
-                                timestamp: Date.now()
-                            });
-                            showNotification("Transmission sent to all units.", "success");
-                        } catch(e) {
-                            showNotification("Failed to send transmission.", "error");
-                        }
-                    };
-                };
-                
-                const btnPtt = document.getElementById('btn-dispatch-ptt');
-                const textPtt = document.getElementById('text-dispatch-ptt');
-                
-                const startRec = (e) => {
-                    if (e && e.cancelable) e.preventDefault();
-                    if (voiceRecorder && voiceRecorder.state === 'inactive') {
-                        voiceChunks = [];
-                        voiceRecorder.start();
-                        btnPtt.classList.replace('bg-blue-600', 'bg-red-600');
-                        btnPtt.classList.replace('hover:bg-blue-500', 'hover:bg-red-500');
-                        btnPtt.classList.replace('border-blue-400', 'border-red-400');
-                        textPtt.innerText = "RECORDING...";
-                    }
-                };
-                
-                const stopRec = (e) => {
-                    if (e && e.cancelable) e.preventDefault();
-                    if (voiceRecorder && voiceRecorder.state === 'recording') {
-                        voiceRecorder.stop();
-                        btnPtt.classList.replace('bg-red-600', 'bg-blue-600');
-                        btnPtt.classList.replace('hover:bg-red-500', 'hover:bg-blue-500');
-                        btnPtt.classList.replace('border-red-400', 'border-blue-400');
-                        textPtt.innerText = "HOLD TO SPEAK";
-                    }
-                };
-                
-                btnPtt.addEventListener('mousedown', startRec);
-                btnPtt.addEventListener('touchstart', startRec, {passive: false});
-                btnPtt.addEventListener('mouseup', stopRec);
-                btnPtt.addEventListener('mouseleave', stopRec);
-                btnPtt.addEventListener('touchend', stopRec);
-                btnPtt.addEventListener('touchcancel', stopRec);
-                
-            } catch (err) {
-                showNotification("Microphone access is required for Voice Radio.", "error");
-            }
-        };
-
-        // Cop Voice Radio
-        const initSpeechRecognition = () => {
-            const btn = document.getElementById('btn-radio-dispatch');
-            const iconMic = document.getElementById('icon-mic');
-            const textMic = document.getElementById('text-mic');
-
-            if (!SpeechRecognition) {
-                iconMic.classList.replace('text-gray-400', 'text-red-500');
-                textMic.innerText = "NO MIC";
-                return; // Not supported
-            }
-            
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            
-            recognition.onstart = () => {
-                isRecording = true;
-                btn.classList.replace('bg-neutral-800', 'bg-red-900');
-                btn.classList.replace('hover:bg-neutral-700', 'hover:bg-red-800');
-                iconMic.classList.replace('text-gray-400', 'text-red-400');
-                iconMic.classList.add('animate-pulse');
-                textMic.innerText = "LISTENING";
-            };
-            
-            recognition.onresult = async (event) => {
-                const transcript = event.results[0][0].transcript;
-                showNotification(`Transmitting: "${transcript}"`, "success");
                 try {
                     await push(ref(db, `rooms/${currentRoom}/radioLog`), {
-                        text: transcript,
-                        copId: mySessionId,
+                        text: txt,
+                        copId: 'DISPATCH',
                         timestamp: Date.now()
                     });
-                } catch(e) { console.error("Radio send failed"); }
+                    input.value = '';
+                } catch(e) { showNotification("Failed to send message.", "error"); }
             };
 
-            recognition.onerror = (event) => {
-                console.warn("Speech error: ", event.error);
-                if (event.error !== 'aborted') {
-                    showNotification(`Mic error: ${event.error}`, "error");
-                }
-                resetRadioUI();
-            };
-            
-            const resetRadioUI = () => {
-                isRecording = false;
-                btn.classList.replace('bg-red-900', 'bg-neutral-800');
-                btn.classList.replace('hover:bg-red-800', 'hover:bg-neutral-700');
-                iconMic.classList.replace('text-red-400', 'text-gray-400');
-                iconMic.classList.remove('animate-pulse');
-                textMic.innerText = "HOLD & SPEAK";
-            };
+            document.getElementById('dispatch-reply-input').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') document.getElementById('btn-dispatch-reply').click();
+            });
+        }
 
-            recognition.onend = () => {
-                resetRadioUI();
-            };
-            
-            const startRadio = (e) => {
-                if (e && e.cancelable) e.preventDefault();
-                if (!isRecording) {
-                    try { recognition.start(); } 
-                    catch(e) { showNotification("Mic error. Try again.", "error"); }
-                }
-            };
-
-            const stopRadio = (e) => {
-                if (e && e.cancelable) e.preventDefault();
-                if (isRecording) {
-                    recognition.stop();
-                }
-            };
-
-            btn.addEventListener('mousedown', startRadio);
-            btn.addEventListener('touchstart', startRadio, {passive: false});
-            btn.addEventListener('mouseup', stopRadio);
-            btn.addEventListener('mouseleave', stopRadio);
-            btn.addEventListener('touchend', stopRadio);
-            btn.addEventListener('touchcancel', stopRadio);
-        };
-
-        // Dispatch Send Message
+        // Dispatch Send Message to Robbers (Red Overlay)
         document.getElementById('btn-dispatch-send').onclick = async () => {
             const input = document.getElementById('dispatch-msg-input');
             const txt = input.value.trim();
@@ -1279,8 +1171,31 @@
         document.getElementById('btn-ignore-backup').onclick = () => showView('view-playing');
 
         // ==========================================
-        // 8. GLOBAL ARREST SYSTEM (No Red Dot Clicking)
+        // 8. GLOBAL ARREST SYSTEM
         // ==========================================
+        
+        // Cop Send Message to Dispatch
+        document.getElementById('btn-send-cop-msg').onclick = async () => {
+            const input = document.getElementById('cop-msg-input');
+            const txt = input.value.trim();
+            if (!txt) return;
+            
+            try {
+                await push(ref(db, `rooms/${currentRoom}/radioLog`), {
+                    text: txt,
+                    copId: mySessionId,
+                    timestamp: Date.now()
+                });
+                input.value = '';
+            } catch(e) { 
+                showNotification("Failed to send message.", "error"); 
+            }
+        };
+
+        document.getElementById('cop-msg-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') document.getElementById('btn-send-cop-msg').click();
+        });
+
         const resetArrestUI = () => {
             document.getElementById('camera-preview').classList.add('hidden');
             document.getElementById('ocr-processing').classList.add('hidden');
