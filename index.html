@@ -59,7 +59,7 @@
 
             <h1 class="text-5xl md:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-300 to-gray-600 mb-2 drop-shadow-lg">CATCH & FLEE</h1>
             
-            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold">IRL Pursuit</p>
+            <p class="text-gray-400 mb-8 text-lg uppercase tracking-widest font-semibold">TESTING MODE ENABLED</p>
             
             <div id="error-msg" class="hidden bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-xl mb-6 text-sm font-medium shadow-lg max-w-sm"></div>
 
@@ -112,7 +112,7 @@
         <!-- Hint -->
         <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none w-11/12 max-w-sm">
             <div class="bg-black/80 backdrop-blur-md border border-neutral-700 p-4 rounded-xl text-center shadow-2xl">
-                <p id="hud-hint" class="text-sm font-medium"></p>
+                <p id="hud-hint" class="text-sm font-medium text-yellow-400">TESTING MODE: Cops can tap Robbers from any distance!</p>
             </div>
         </div>
     </div>
@@ -173,10 +173,6 @@
         const db = getFirestore(app);
 
         // --- GAME VARIABLES ---
-        // I have massively increased the Radar to 999999 for TESTING so you can always see each other!
-        // Once done testing, change COP_RADAR_METERS back to 200.
-        const COP_RADAR_METERS = 999999;
-        
         let currentUser = null;
         let myRole = null;
         let myLoc = null;
@@ -231,16 +227,6 @@
             }
         });
 
-        function getDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const p1 = lat1 * Math.PI / 180;
-            const p2 = lat2 * Math.PI / 180;
-            const dp = (lat2 - lat1) * Math.PI / 180;
-            const dl = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-        }
-
         const updateLocationOnServer = (lat, lng, role = myRole) => {
             if (!currentUser) return;
             const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', currentUser.uid);
@@ -271,13 +257,17 @@
             const indicator = document.getElementById('hud-role-indicator');
             indicator.className = `w-3 h-3 rounded-full animate-pulse ${myRole === 'cop' ? 'bg-blue-500' : 'bg-red-500'}`;
             
-            const hint = document.getElementById('hud-hint');
-            hint.className = `text-sm font-medium ${myRole === 'cop' ? 'text-blue-300' : 'text-red-300'}`;
-            hint.innerText = "TESTING MODE: Cops can tap Robbers from any distance!";
+            const loadSimulatedLocation = () => {
+                // Add a random tiny jitter so the markers don't perfectly overlap if both phones fail to get GPS
+                const latJitter = (Math.random() - 0.5) * 0.002;
+                const lngJitter = (Math.random() - 0.5) * 0.002;
+                myLoc = { lat: 51.505 + latJitter, lng: -0.09 + lngJitter }; 
+                updateLocationOnServer(myLoc.lat, myLoc.lng, myRole);
+                startGameplay(); 
+            }
 
             if (!navigator.geolocation) {
-                myLoc = { lat: 51.505, lng: -0.09 }; 
-                startGameplay();
+                loadSimulatedLocation();
                 return;
             }
 
@@ -288,8 +278,7 @@
                     startGameplay();
                 },
                 (err) => {
-                    myLoc = { lat: 51.505, lng: -0.09 }; 
-                    startGameplay(); 
+                    loadSimulatedLocation();
                 },
                 { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
             );
@@ -310,6 +299,7 @@
 
             startTracking();
 
+            // Listen to other players
             const playersRef = collection(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players');
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             unsubscribeSnapshot = onSnapshot(playersRef, (snapshot) => {
@@ -322,6 +312,7 @@
                     currentPlayers[docSnap.id] = data;
                     count++;
                     
+                    // Listen for my own arrest status
                     if (docSnap.id === currentUser.uid && data.isCaught && !isCaught && myRole === 'robber') {
                         isCaught = true;
                         showView('view-caught');
@@ -362,24 +353,21 @@
             );
         };
 
-        // --- 5. RENDER MAP & CLICK-TO-ARREST ---
+        // --- 4. RENDER MAP & CLICK-TO-ARREST ---
         const renderMapMarkers = () => {
             Object.values(mapMarkers).forEach(m => map.removeLayer(m));
             mapMarkers = {};
 
             Object.entries(otherPlayers).forEach(([id, p]) => {
                 if (!p.lat || !p.lng) return;
+                // DO NOT RENDER IF CAUGHT ALREADY
                 if (p.isCaught && p.role === 'robber') return;
 
                 const isMe = id === currentUser?.uid;
                 const isCop = p.role === 'cop';
-                let isVisible = true;
-
-                if (!isMe && myLoc) {
-                    const dist = getDistance(myLoc.lat, myLoc.lng, p.lat, p.lng);
-                    // For TESTING, COP_RADAR_METERS is 999999 so they always see each other!
-                    if (dist > COP_RADAR_METERS) isVisible = false;
-                }
+                
+                // FOR TESTING: We forcefully override isVisible so everyone can see everyone
+                let isVisible = true; 
 
                 if (isVisible) {
                     const colorClass = isCop ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]' : 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
@@ -392,29 +380,19 @@
                     const marker = L.marker([p.lat, p.lng], { icon: customIcon, interactive: true }).addTo(map);
                     mapMarkers[id] = marker;
 
-                    // CLICK TO ARREST LOGIC
+                    // TESTING MODE CLICK ARREST
                     marker.on('click', () => {
                         if (!isMe && myRole === 'cop' && p.role === 'robber') {
-                            // --- TESTING BYPASS ---
-                            // I removed the "dist <= 30" check entirely! 
-                            // You can now click their dot from ANY distance to test the camera modal.
+                            // NO DISTANCE RESTRICTIONS FOR TESTING!
                             targetArrestId = id;
                             showView('view-arrest-modal');
                         }
                     });
-
-                    // Draw the blue radar circle around myself if I am a cop
-                    if (isMe && myRole === 'cop') {
-                        // Using a fixed small visual radius so it doesn't cover the whole world during testing
-                        const visualRadius = 30; 
-                        const circle = L.circle([p.lat, p.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: visualRadius, weight: 1, dashArray: '5, 10', interactive: false }).addTo(map);
-                        mapMarkers[`${id}_circle`] = circle;
-                    }
                 }
             });
         };
 
-        // --- 6. CAMERA / PHOTO LOGIC ---
+        // --- 5. CAMERA / PHOTO LOGIC ---
         document.getElementById('camera-input').addEventListener('change', function(e) {
             if (e.target.files && e.target.files[0]) {
                 var reader = new FileReader();
@@ -438,6 +416,8 @@
         window.submitArrest = () => {
             if (!targetArrestId) return;
             const playerDocRef = doc(db, 'artifacts', SHARED_GAME_ID, 'public', 'data', 'players', targetArrestId);
+            
+            // This physically locks the Robber out by updating their database status
             setDoc(playerDocRef, { isCaught: true }, { merge: true }).then(() => {
                 alert("BUSTED! You successfully arrested the Robber.");
                 closeArrestModal();
